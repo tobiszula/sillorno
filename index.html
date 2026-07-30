@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sillorno — Blanquería premium · Toallas, sábanas, almohadas y frazadas</title>
+<meta name="description" content="Blanquería de calidad con envíos a todo el país. Toallas y toallones de algodón, juegos de sábanas, almohadas, frazadas y repasadores. Precios finales, pedido por WhatsApp.">
+<meta name="theme-color" content="#0D0A0B">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sillorno — Blanquería premium">
+<meta property="og:description" content="Toallas, sábanas, almohadas y frazadas. Envíos a todo el país, pedido por WhatsApp.">
+<meta property="og:image" content="assets/img/hero-invierno.webp">
+<meta property="og:locale" content="es_AR">
+
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap">
+<link rel="preload" as="image" href="assets/img/hero-invierno.webp" fetchpriority="high">
+<link rel="stylesheet" href="styles.css?v=20260730c">
+</head>
+<body>
+
+<a class="skip-link" href="#catalogo">Ir al catálogo</a>
+
+<!-- ==========================================================  HEADER  -->
+<header class="header" data-header>
+  <div class="header-inner">
+    <button class="icon-btn header-burger" type="button" data-open-nav
+            aria-label="Abrir menú de categorías" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+
+    <a class="brand" href="#top" aria-label="Sillorno, inicio">
+      <span class="brand-word">Sillorno</span>
+      <span class="brand-sub">blanquería</span>
+    </a>
+
+    <nav class="header-nav" aria-label="Categorías">
+      <a href="#catalogo" data-cat-link="toallas">Toallas</a>
+      <a href="#catalogo" data-cat-link="sabanas">Sábanas</a>
+      <a href="#catalogo" data-cat-link="almohadas">Almohadas</a>
+      <a href="#catalogo" data-cat-link="frazadas">Frazadas</a>
+      <a href="#catalogo" data-cat-link="repasadores">Repasadores</a>
+      <a href="#combos">Sets</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="icon-btn" type="button" data-focus-search aria-label="Buscar productos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      </button>
+      <button class="icon-btn cart-btn" type="button" data-open-cart aria-label="Ver mi pedido">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+        <span class="cart-badge" data-cart-count hidden>0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Menú de categorías en celular -->
+<div class="navsheet" data-navsheet hidden>
+  <nav aria-label="Categorías">
+    <a href="#catalogo" data-cat-link="toallas">Toallas y toallones</a>
+    <a href="#catalogo" data-cat-link="sabanas">Juegos de sábanas</a>
+    <a href="#catalogo" data-cat-link="almohadas">Almohadas</a>
+    <a href="#catalogo" data-cat-link="frazadas">Frazadas y mantas</a>
+    <a href="#catalogo" data-cat-link="repasadores">Repasadores</a>
+    <a href="#combos">Sets armados</a>
+  </nav>
+</div>
+
+<main id="top">
+
+  <!-- ==========================================================  HERO  -->
+  <section class="hero">
+    <div class="hero-media">
+      <img src="assets/img/hero-invierno.webp" alt="Mujer envuelta en una manta de Sillorno" fetchpriority="high" decoding="async">
+    </div>
+    <div class="hero-veil" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <p class="kicker hero-el">Blanquería · La Plata</p>
+      <h1 class="hero-title hero-el">
+        La casa se siente<br><em>en las texturas</em>
+      </h1>
+      <p class="hero-sub hero-el">
+        Toallas de algodón peinado, sábanas que mejoran con cada lavado y
+        frazadas con peso real. Elegidas una por una.
+      </p>
+      <div class="hero-cta hero-el">
+        <a class="btn btn-primary" href="#catalogo">Ver el catálogo</a>
+        <a class="btn btn-ghost" href="#" data-wa-general>Consultar por WhatsApp</a>
+      </div>
+      <div class="hero-meta hero-el">
+        <span><i class="dot" aria-hidden="true"></i>Envíos a todo el país</span>
+        <span>Precios finales</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================  CATEGORÍAS  -->
+  <section class="cats" aria-labelledby="cats-t">
+    <div class="cats-head">
+      <p class="overline">Recorré la casa</p>
+      <h2 class="sec-title" id="cats-t">Elegí tu <em>rincón</em></h2>
+    </div>
+    <div class="cats-list" data-cats></div>
+  </section>
+
+  <!-- =======================================================  CATÁLOGO  -->
+  <section class="catalogo" id="catalogo" aria-labelledby="cat-t">
+    <div class="wrap">
+      <header class="sec-head reveal">
+        <p class="kicker">El catálogo</p>
+        <h2 class="sec-title" id="cat-t">Todo lo que tenemos<br><em>hoy disponible</em></h2>
+      </header>
+
+      <!-- Barra de herramientas: buscar / ordenar / filtrar -->
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input type="search" id="q" data-search placeholder="Buscar: toallón, queen, algodón…"
+                 autocomplete="off" aria-label="Buscar productos">
+          <button type="button" class="search-clear" data-search-clear aria-label="Borrar búsqueda" hidden>&times;</button>
+        </div>
+
+        <button class="btn btn-line filters-btn" type="button" data-open-filters aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+          Filtros <span class="pill" data-filter-count hidden>0</span>
+        </button>
+
+        <label class="sortwrap">
+          <span class="sr-only">Ordenar por</span>
+          <select data-sort aria-label="Ordenar productos">
+            <option value="destacados">Destacados</option>
+            <option value="precio-asc">Menor precio</option>
+            <option value="precio-desc">Mayor precio</option>
+            <option value="nombre">Nombre A-Z</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="catalogo-body">
+        <!-- Filtros: barra lateral en desktop, hoja inferior en celular -->
+        <aside class="filtros" data-filtros aria-label="Filtros">
+          <div class="filtros-head">
+            <h3>Filtros</h3>
+            <button class="icon-btn" type="button" data-close-filters aria-label="Cerrar filtros">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+          <div class="filtros-body" data-filtros-body></div>
+          <div class="filtros-foot">
+            <button class="btn btn-line" type="button" data-clear-filters>Limpiar</button>
+            <button class="btn btn-primary" type="button" data-apply-filters>Ver resultados</button>
+          </div>
+        </aside>
+
+        <div class="resultados">
+          <div class="resultados-head">
+            <p class="count" data-count aria-live="polite"></p>
+            <div class="chips" data-chips></div>
+          </div>
+
+          <div class="grid" data-grid></div>
+
+          <div class="vacio" data-vacio hidden>
+            <p class="vacio-title">No encontramos nada con esa búsqueda</p>
+            <p>Probá con otra palabra o limpiá los filtros.</p>
+            <button class="btn btn-line" type="button" data-clear-filters>Limpiar todo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================  COMBOS  -->
+  <section class="combos" id="combos" aria-labelledby="combos-t">
+    <div class="wrap">
+      <header class="sec-head reveal">
+        <p class="kicker">Sets armados</p>
+        <h2 class="sec-title" id="combos-t">Listos para regalar<br><em>o para estrenar</em></h2>
+      </header>
+      <div class="combos-row" data-combos></div>
+    </div>
+  </section>
+
+  <!-- ===========================================  EDITORIAL / CONFIANZA -->
+  <section class="editorial reveal">
+    <div class="editorial-media">
+      <img src="assets/img/lifestyle-bano.webp" alt="Toallones de algodón apilados" loading="lazy" decoding="async">
+    </div>
+    <div class="editorial-text">
+      <p class="kicker">Cómo compramos</p>
+      <h2 class="sec-title">El gramaje<br><em>no se negocia</em></h2>
+      <p>
+        En blanquería el precio se explica en el papel: gramos por metro
+        cuadrado, cantidad de hilos, tipo de algodón. Por eso está todo escrito
+        en cada ficha, sin vueltas. Si un toallón pesa 500 g/m², lo vas a leer
+        antes de comprarlo.
+      </p>
+      <a class="btn btn-line" href="#catalogo">Ver el catálogo</a>
+    </div>
+  </section>
+
+  <!-- ===========================================================  INFO  -->
+  <section class="info" aria-labelledby="info-t">
+    <div class="wrap">
+      <h2 class="sr-only" id="info-t">Cómo comprar</h2>
+      <div class="info-row" data-info></div>
+    </div>
+  </section>
+</main>
+
+<!-- ==========================================================  FOOTER  -->
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <p class="brand-word">Sillorno</p>
+      <p class="footer-claim">Blanquería para la casa que habitás.</p>
+    </div>
+    <nav class="footer-col" aria-label="Categorías del pie">
+      <h3>Catálogo</h3>
+      <a href="#catalogo" data-cat-link="toallas">Toallas y toallones</a>
+      <a href="#catalogo" data-cat-link="sabanas">Juegos de sábanas</a>
+      <a href="#catalogo" data-cat-link="almohadas">Almohadas</a>
+      <a href="#catalogo" data-cat-link="frazadas">Frazadas y mantas</a>
+      <a href="#catalogo" data-cat-link="repasadores">Repasadores</a>
+    </nav>
+    <div class="footer-col">
+      <h3>Contacto</h3>
+      <a data-wa-general href="#">WhatsApp <span data-wa-visible></span></a>
+      <a data-mail href="#"></a>
+      <a data-ig href="#" target="_blank" rel="noopener">Instagram</a>
+      <p class="footer-note">Envíos a todo el país · Coordinamos por WhatsApp</p>
+    </div>
+  </div>
+  <div class="wrap footer-legal">
+    <p>© <span data-year></span> Sillorno. Precios finales en pesos argentinos.</p>
+  </div>
+</footer>
+
+<!-- ===============================================  FICHA DE PRODUCTO  -->
+<dialog class="sheet" data-product-dialog aria-label="Detalle del producto">
+  <div class="sheet-panel" data-product-panel></div>
+</dialog>
+
+<!-- =====================================================  CARRITO  -->
+<dialog class="drawer" data-cart-dialog aria-label="Mi pedido">
+  <div class="drawer-panel">
+    <header class="drawer-head">
+      <h2>Mi pedido</h2>
+      <button class="icon-btn" type="button" data-close-cart aria-label="Cerrar el pedido">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="drawer-body" data-cart-body></div>
+    <footer class="drawer-foot" data-cart-foot hidden>
+      <div class="drawer-total">
+        <span>Total</span>
+        <strong data-cart-total></strong>
+      </div>
+      <p class="drawer-note">El envío se coordina por WhatsApp según tu zona.</p>
+      <button class="btn btn-primary btn-wa" type="button" data-checkout>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="ico-wa"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2z"/></svg>
+        Enviar pedido por WhatsApp
+      </button>
+    </footer>
+  </div>
+</dialog>
+
+<div class="toast" data-toast role="status" aria-live="polite" hidden></div>
+
+<noscript>
+  <div class="noscript">
+    Para ver el catálogo y armar tu pedido necesitás activar JavaScript.
+    Si preferís, escribinos directo por WhatsApp al +54 9 221 358-9605.
+  </div>
+</noscript>
+
+<script defer src="lib/anime.min.js"></script>
+<script defer src="lib/manifest.js?v=20260730c"></script>
+<script defer src="main.js?v=20260730c"></script>
+</body>
+</html>
