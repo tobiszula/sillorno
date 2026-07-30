@@ -168,7 +168,7 @@
   /* ==========================================================  RENDERIZAR */
   function mountCats() {
     var box = $("[data-cats]"); if (!box) return;
-    box.innerHTML = CATEGORIAS.map(function (c) {
+    var tiles = CATEGORIAS.map(function (c) {
       return '<button class="cat-banner" type="button" data-cat-tile="' + esc(c.id) + '" ' +
              'aria-label="Ver ' + esc(c.nombre) + '">' +
              '<img src="' + esc(c.img) + '" alt="" loading="lazy" decoding="async">' +
@@ -176,7 +176,14 @@
                '<span class="cat-banner-name">' + esc(c.corto || c.nombre) + '</span>' +
                (c.sub ? '<span class="cat-banner-sub">' + esc(c.sub) + '</span>' : '') +
              '</span></button>';
-    }).join("");
+    });
+    // "Ver todo": solo visible en la grilla de desktop (oculto en mobile por CSS)
+    tiles.push('<button class="cat-banner cat-all" type="button" data-cat-all aria-label="Ver todo">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+      '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>' +
+      '<rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>' +
+      '</svg><span class="cat-banner-txt"><span class="cat-banner-name">Ver todo</span></span></button>');
+    box.innerHTML = tiles.join("");
   }
 
   function mountInfo() {

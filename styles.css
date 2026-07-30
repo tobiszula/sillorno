@@ -376,6 +376,33 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 .cat-banner:hover img { transform: scale(1.05); filter: saturate(1) brightness(.72); }
 .cat-banner.is-active { border-color: var(--gold); }
 .cat-banner.is-active img { filter: saturate(1) brightness(.78); }
+/* "Ver todo" solo aparece en la grilla de desktop (oculto en mobile) */
+.cat-all { display: none; }
+
+/* DESKTOP (≥720px): las categorías vuelven a ser CUADRADAS en grilla, como antes */
+@media (min-width: 720px) {
+  .cats-head { display: none; }
+  .cats-list {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem;
+  }
+  .cat-banner { height: auto; aspect-ratio: 4 / 3; }
+  .cat-banner::after { background: linear-gradient(180deg, transparent, rgba(13, 10, 11, .9)); }
+  .cat-banner-txt { left: 0; right: 0; top: auto; bottom: 0; transform: none; padding: .5rem .55rem; }
+  .cat-banner-name { font-size: .78rem; font-weight: 500; line-height: 1.2; }
+  .cat-banner-sub { display: none; }
+  .cat-banner.is-active { border-color: var(--wine-soft); }
+
+  .cat-all {
+    display: grid; place-content: center; gap: .3rem;
+    background: var(--bg-3); color: var(--cream-2);
+    border-style: dashed; border-color: var(--line-2);
+  }
+  .cat-all::after { display: none; }
+  .cat-all svg { width: 19px; height: 19px; margin-inline: auto; fill: currentColor; }
+  .cat-all .cat-banner-txt { position: static; transform: none; padding: 0; text-align: center; }
+  .cat-all .cat-banner-name { font-size: .72rem; color: var(--cream-2); }
+  .cat-all:hover { color: var(--cream); border-color: var(--cream-3); background: var(--bg-4); }
+}
 
 /* ==========================================================  9. CATÁLOGO */
 .catalogo { padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 7vw, 6rem); scroll-margin-top: var(--header-h); }
