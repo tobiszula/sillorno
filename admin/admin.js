@@ -1008,7 +1008,7 @@
       err.hidden = false;
     }).then(function () {
       btn.disabled = false;
-      btn.textContent = "Entrar";
+      btn.textContent = "Ingresar";
     });
   });
 
