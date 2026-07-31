@@ -210,14 +210,23 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   display: flex; align-items: center; gap: .5rem;
 }
 
-.brand { display: flex; flex-direction: column; line-height: 1; margin-right: auto; }
+.brand { display: flex; align-items: center; gap: .55rem; line-height: 1; margin-right: auto; }
+/* Chip claro para que la ilustración de la abuela (pensada para fondo claro) lea */
+.brand-mark {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
+  background: var(--cream); display: grid; place-items: center; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line-2);
+}
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; }
+.brand-txt { display: flex; flex-direction: column; }
 .brand-word {
   font-family: var(--serif); font-size: 1.42rem; font-weight: 500;
   letter-spacing: .13em; text-transform: uppercase;
 }
 .brand-sub {
-  font-size: .55rem; letter-spacing: .34em; text-transform: uppercase;
-  color: var(--cream-3); margin-top: 3px;
+  font-family: var(--serif); font-style: italic;
+  font-size: .72rem; letter-spacing: .05em; text-transform: none;
+  color: var(--wine-soft); margin-top: 1px;
 }
 
 .header-nav { display: none; gap: 1.6rem; margin-inline: auto; }
@@ -368,10 +377,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   font-size: clamp(1.5rem, 6vw, 1.9rem); font-weight: 500;
   color: var(--cream); line-height: 1.05;
 }
-.cat-banner-sub {
-  display: block; font-family: var(--sans);
-  font-size: .82rem; color: var(--wine-soft); margin-top: .25rem;
-}
+/* Subtítulo de categoría desactivado: en el banner mobile se pidió mostrar
+   solo el nombre. Queda el dato en el manifest por si se quiere reactivar. */
+.cat-banner-sub { display: none; }
 .cat-banner:hover { border-color: var(--line-2); }
 .cat-banner:hover img { transform: scale(1.05); filter: saturate(1) brightness(.72); }
 .cat-banner.is-active { border-color: var(--gold); }
@@ -790,8 +798,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 /* ===========================================================  14. FOOTER */
 .footer { border-top: 1px solid var(--line); background: var(--bg-2); padding-top: clamp(2.5rem, 5vw, 4rem); }
 .footer-inner { display: grid; gap: 2rem; grid-template-columns: 1fr; padding-bottom: 2.5rem; }
-.footer-brand .brand-word { font-family: var(--serif); font-size: 1.6rem; letter-spacing: .13em; text-transform: uppercase; }
-.footer-claim { font-size: .84rem; color: var(--cream-3); margin-top: .5rem; max-width: 30ch; }
+/* Placa clara para el logo completo (el wordmark marrón sólo lee sobre claro) */
+.footer-logo {
+  display: inline-block; padding: 1.1rem 1.3rem;
+  background: var(--cream); border-radius: 12px;
+  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, .8);
+}
+.footer-logo img { width: 148px; height: auto; }
+.footer-claim { font-size: .84rem; color: var(--cream-3); margin-top: .9rem; max-width: 30ch; }
 .footer-col { display: flex; flex-direction: column; gap: .5rem; }
 .footer-col h3 {
   font-size: .66rem; font-weight: 500; letter-spacing: .18em;
