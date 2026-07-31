@@ -76,21 +76,42 @@ to sign up»*. Así nadie más se puede crear una cuenta.
 
 ### 5. Conectar la web con la base
 
-**Settings → API.** Copiar los dos datos y pegarlos en
-`lib/supabase-config.js`:
+En Supabase: **Settings → API**. De ahí salen los dos datos.
 
-```js
-window.__SUPABASE__ = {
-  url: "https://xxxxxxxx.supabase.co",   // Project URL
-  anonKey: "eyJhbGciOi...",              // la clave "anon public"
-};
+**En Vercel** (o Netlify) se cargan como variables de entorno, en
+*Settings → Environment Variables*:
+
+| Variable | Valor |
+|---|---|
+| `SUPABASE_URL` | el **Project URL** (`https://xxxxxxxx.supabase.co`) |
+| `SUPABASE_ANON_KEY` | la clave **anon public** (empieza con `eyJ…`) |
+
+Marcalas para *Production*, *Preview* y *Development*. En cada deploy, Vercel
+corre `tools/build-config.js` (está puesto como `buildCommand` en
+`vercel.json`) y ese script genera `lib/supabase-config.js` con esos valores.
+
+> **Si cambiás una variable, hay que volver a deployar.** El archivo se genera
+> durante el build; tocar la variable sola no alcanza.
+
+Si el hosting no tiene variables de entorno (Hostinger por FTP, por ejemplo),
+se edita `lib/supabase-config.js` a mano antes de subir y listo.
+
+> La clave `anon` es pública a propósito: viaja al navegador de cualquier
+> visitante, esté en una variable de entorno o no. Lo que protege la base es el
+> RLS de `schema.sql`: con esa clave sola sólo se puede **leer** el catálogo.
+> Para escribir hay que iniciar sesión con un usuario que esté en `admins`.
+> **Nunca** uses ahí la clave `service_role`, que sí es secreta.
+
+### 5b. Para probarlo en tu computadora
+
+```bash
+SUPABASE_URL="https://xxxxxxxx.supabase.co" \
+SUPABASE_ANON_KEY="eyJhbGciOi..." \
+node tools/build-config.js
 ```
 
-> La clave `anon` es pública a propósito: va en el navegador y **no** da permiso
-> para editar nada. Quien edita es el usuario que inicia sesión.
-> **Nunca** pongas ahí la clave `service_role`.
-
-Subir el cambio al hosting.
+Eso genera el archivo local. Ojo: queda modificado en git, no lo commitees con
+las claves adentro (no es grave si pasa, pero ensucia).
 
 ### 6. Cargar el catálogo inicial
 
@@ -112,7 +133,7 @@ sillorno-web/
 ├── main.js             Catálogo, filtros, ficha, carrito y WhatsApp
 ├── lib/
 │   ├── manifest.js     Marca, contacto, textos, paleta + catálogo de respaldo
-│   ├── supabase-config.js  ← LAS DOS CLAVES DE LA BASE
+│   ├── supabase-config.js  Claves de la base — LO GENERA EL BUILD, no editar
 │   ├── data.js         Trae el catálogo de la base (con caché y respaldo)
 │   └── anime.min.js    Librería de animaciones
 ├── admin/              ← EL PANEL (index.html, admin.css, admin.js)
@@ -122,6 +143,8 @@ sillorno-web/
 │   ├── img/            Fotos en WebP
 │   └── favicon.svg
 ├── tools/
+│   ├── build-config.js     Genera supabase-config.js desde las variables
+│   │                       de entorno. Lo corre Vercel en cada deploy.
 │   └── extract_photos.py   Sacó las fotos del PDF del proveedor.
 │                           No se sube al hosting, es sólo para regenerarlas.
 ├── .htaccess           Caché para hostings Apache
