@@ -63,21 +63,38 @@
     return "Microfibra / poliéster";
   }
 
-  PRODUCTOS.forEach(function (p) {
-    p._material = materialTag(p);
-    p._medidas = (p.variantes || []).map(medidaLabel);
-    p._precios = (p.variantes || []).map(function (v) { return v.precio; });
-    p._min = Math.min.apply(null, p._precios);
-    p._max = Math.max.apply(null, p._precios);
-    p._hayStock = (p.variantes || []).some(function (v) { return v.stock !== "agotado"; });
-    p._cat = (CATEGORIAS.filter(function (c) { return c.id === p.categoria; })[0] || {}).nombre || "";
-    p._busca = norm([p.nombre, p._cat, p.material, p.gramaje, p.descripcion,
-                     p._medidas.join(" "), (p.variantes || []).map(function (v) { return v.medida; }).join(" "),
-                     (p.estampados || []).map(function (e) { return e.nombre; }).join(" "),
-                     (p.colores || []).join(" ")].join(" "));
-  });
+  var PRECIO_MAX = 0;
 
-  var PRECIO_MAX = Math.ceil(Math.max.apply(null, PRODUCTOS.map(function (p) { return p._max; })) / 1000) * 1000;
+  /* Lee window.__SILLORNO__ (venga de manifest.js o de la base de datos) y
+     deja los productos listos para filtrar, ordenar y buscar. Se puede volver
+     a llamar si el catálogo cambia sin recargar la página. */
+  function preparar() {
+    DATA       = window.__SILLORNO__ || DATA || {};
+    PRODUCTOS  = DATA.productos  || [];
+    CATEGORIAS = DATA.categorias || [];
+    COMBOS     = DATA.combos     || [];
+    COLORES    = DATA.colores    || {};
+
+    PRODUCTOS.forEach(function (p) {
+      p._material = materialTag(p);
+      p._medidas = (p.variantes || []).map(medidaLabel);
+      p._precios = (p.variantes || []).map(function (v) { return Number(v.precio) || 0; });
+      p._min = p._precios.length ? Math.min.apply(null, p._precios) : 0;
+      p._max = p._precios.length ? Math.max.apply(null, p._precios) : 0;
+      p._hayStock = (p.variantes || []).some(function (v) { return v.stock !== "agotado"; });
+      p._cat = (CATEGORIAS.filter(function (c) { return c.id === p.categoria; })[0] || {}).nombre || "";
+      p._busca = norm([p.nombre, p._cat, p.material, p.gramaje, p.descripcion,
+                       p._medidas.join(" "), (p.variantes || []).map(function (v) { return v.medida; }).join(" "),
+                       (p.estampados || []).map(function (e) { return e.nombre; }).join(" "),
+                       (p.colores || []).join(" ")].join(" "));
+    });
+
+    var tope = PRODUCTOS.length
+      ? Math.max.apply(null, PRODUCTOS.map(function (p) { return p._max; })) : 0;
+    PRECIO_MAX = Math.max(3000, Math.ceil(tope / 1000) * 1000);
+  }
+
+  preparar();
 
   function byId(id) {
     return PRODUCTOS.filter(function (p) { return p.id === id; })[0];
@@ -920,7 +937,32 @@
   }
 
   /* =============================================================  ARRANQUE */
+
+  /* Relee el catálogo y ajusta el filtro de precio al techo nuevo. */
+  function recargarDatos() {
+    var topeAnterior = PRECIO_MAX;
+    preparar();
+    if (state.precioMax >= topeAnterior || state.precioMax > PRECIO_MAX) {
+      state.precioMax = PRECIO_MAX;
+    }
+  }
+
+  /* Vuelve a dibujar el catálogo cuando la base trae cambios (lo llama
+     lib/data.js). Los clics y los filtros están delegados en document,
+     así que regenerar el HTML no rompe nada. */
+  function remontar() {
+    safe(recargarDatos, "recargarDatos");
+    var grid = $("[data-grid]"); if (grid) grid.innerHTML = "";
+    safe(mountCats, "mountCats");
+    safe(mountGrid, "mountGrid");
+    safe(mountCombos, "mountCombos");
+    safe(mountFiltros, "mountFiltros");
+    safe(function () { aplicar(false); }, "aplicar");
+    safe(initReveals, "initReveals");
+  }
+
   function boot() {
+    safe(recargarDatos, "recargarDatos");
     safe(cartLoad, "cartLoad");
     safe(mountCats, "mountCats");
     safe(mountInfo, "mountInfo");
@@ -938,9 +980,18 @@
     safe(renderCart, "renderCart");
     safe(initReveals, "initReveals");
 
+    window.__SILLORNO_REMOUNT__ = remontar;
     document.documentElement.classList.add("is-ready");
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
+  /* Si hay base de datos, esperamos a que conteste (lib/data.js le pone un
+     techo de 5 segundos y nunca falla: si no hay red, sigue con manifest.js). */
+  function arrancar() {
+    var listo = window.__SILLORNO_READY__;
+    if (listo && typeof listo.then === "function") listo.then(boot, boot);
+    else boot();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", arrancar);
+  else arrancar();
 })();

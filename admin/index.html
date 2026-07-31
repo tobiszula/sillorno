@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel · Sillorno</title>
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="admin.css?v=20260801a">
+</head>
+<body>
+
+<!-- ================================================================ LOGIN -->
+<section class="login" data-login hidden>
+  <form class="login-box" data-login-form>
+    <p class="login-marca">Sillorno</p>
+    <h1>Panel de administración</h1>
+    <p class="login-sub">Entrá con el mail y la contraseña de la tienda.</p>
+
+    <label>Mail
+      <input type="email" name="email" autocomplete="username" required>
+    </label>
+    <label>Contraseña
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+
+    <p class="error" data-login-error hidden></p>
+    <button class="btn btn-primary" type="submit" data-login-btn>Entrar</button>
+  </form>
+</section>
+
+<!-- ============================================================== ARRANQUE -->
+<section class="cargando" data-cargando>
+  <p>Cargando…</p>
+</section>
+
+<!-- ============================================================= SIN CONFIG -->
+<section class="aviso" data-sin-config hidden>
+  <div class="aviso-box">
+    <h1>Falta conectar la base de datos</h1>
+    <p>El archivo <code>lib/supabase-config.js</code> está vacío. Completá la
+      <strong>URL</strong> y la <strong>clave anon</strong> del proyecto de
+      Supabase y volvé a entrar.</p>
+    <p class="aviso-nota">Los pasos completos están en <code>LEEME.md</code>,
+      en la sección «Panel de administración».</p>
+  </div>
+</section>
+
+<!-- ================================================================= PANEL -->
+<div class="app" data-app hidden>
+
+  <header class="top">
+    <div class="top-in">
+      <p class="marca">Sillorno <span>panel</span></p>
+      <nav class="tabs" data-tabs>
+        <button type="button" class="tab is-on" data-tab="precios">Precios</button>
+        <button type="button" class="tab" data-tab="productos">Productos</button>
+        <button type="button" class="tab" data-tab="categorias">Categorías</button>
+        <button type="button" class="tab" data-tab="sets">Sets</button>
+      </nav>
+      <div class="top-acc">
+        <a class="btn btn-ghost" href="../index.html" target="_blank" rel="noopener">Ver la web</a>
+        <button type="button" class="btn btn-ghost" data-salir>Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ------------------------------------------------------- PRECIOS -->
+    <section class="vista" data-vista="precios">
+      <div class="vista-head">
+        <div>
+          <h2>Precios</h2>
+          <p class="hint">Cambiá los números y guardá. Se escriben sin puntos de
+            miles: <code>24402.84</code>.</p>
+        </div>
+        <div class="vista-acc">
+          <input type="search" class="buscar" placeholder="Buscar producto…" data-buscar-precios>
+          <button type="button" class="btn btn-primary" data-guardar-precios disabled>Guardar cambios</button>
+        </div>
+      </div>
+      <div data-lista-precios></div>
+    </section>
+
+    <!-- ----------------------------------------------------- PRODUCTOS -->
+    <section class="vista" data-vista="productos" hidden>
+      <div class="vista-head">
+        <div>
+          <h2>Productos</h2>
+          <p class="hint">Alta, baja y edición de todo lo que se ve en el catálogo.</p>
+        </div>
+        <div class="vista-acc">
+          <input type="search" class="buscar" placeholder="Buscar producto…" data-buscar-productos>
+          <button type="button" class="btn btn-primary" data-nuevo-producto>+ Nuevo producto</button>
+        </div>
+      </div>
+      <div data-lista-productos></div>
+    </section>
+
+    <!-- ---------------------------------------------------- CATEGORÍAS -->
+    <section class="vista" data-vista="categorias" hidden>
+      <div class="vista-head">
+        <div>
+          <h2>Categorías</h2>
+          <p class="hint">El orden de acá es el orden en que se ven en la web.</p>
+        </div>
+        <div class="vista-acc">
+          <button type="button" class="btn btn-primary" data-nueva-categoria>+ Nueva categoría</button>
+        </div>
+      </div>
+      <div data-lista-categorias></div>
+    </section>
+
+    <!-- ---------------------------------------------------------- SETS -->
+    <section class="vista" data-vista="sets" hidden>
+      <div class="vista-head">
+        <div>
+          <h2>Sets armados</h2>
+          <p class="hint">El precio se calcula solo sumando los productos y
+            aplicando el descuento.</p>
+        </div>
+        <div class="vista-acc">
+          <button type="button" class="btn btn-primary" data-nuevo-set>+ Nuevo set</button>
+        </div>
+      </div>
+      <div data-lista-sets></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============================================================== EDITOR -->
+<dialog class="editor" data-editor>
+  <form method="dialog" data-editor-form>
+    <header class="editor-top">
+      <h3 data-editor-titulo>Producto</h3>
+      <button type="button" class="x" data-editor-cerrar aria-label="Cerrar">×</button>
+    </header>
+    <div class="editor-body" data-editor-body></div>
+    <footer class="editor-pie">
+      <p class="error" data-editor-error hidden></p>
+      <button type="button" class="btn btn-ghost" data-editor-cerrar>Cancelar</button>
+      <button type="button" class="btn btn-primary" data-editor-guardar>Guardar</button>
+    </footer>
+  </form>
+</dialog>
+
+<div class="toast" data-toast hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../lib/supabase-config.js?v=20260801a"></script>
+<script src="../lib/manifest.js?v=20260801a"></script>
+<script src="admin.js?v=20260801a"></script>
+</body>
+</html>
