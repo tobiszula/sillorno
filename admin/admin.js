@@ -25,10 +25,19 @@
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
+  // Igual que en la web: sin ",00" cuando el precio es redondo.
   var fmtARS = new Intl.NumberFormat("es-AR", {
-    style: "currency", currency: "ARS", minimumFractionDigits: 2,
+    style: "currency", currency: "ARS",
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
-  function money(n) { return fmtARS.format(Number(n) || 0); }
+  var fmtARS0 = new Intl.NumberFormat("es-AR", {
+    style: "currency", currency: "ARS",
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  });
+  function money(n) {
+    var v = Number(n) || 0;
+    return (v % 1 === 0 ? fmtARS0 : fmtARS).format(v);
+  }
 
   function slug(s) {
     return String(s || "")

@@ -28,11 +28,20 @@
     try { fn(); } catch (e) { console.warn("[" + name + "]", e); }
   }
 
+  // Los precios son redondos, así que no mostramos ",00" al pedo. Si alguna
+  // vez alguien carga un precio con centavos, ahí sí aparecen los dos decimales.
   var fmtARS = new Intl.NumberFormat("es-AR", {
     style: "currency", currency: "ARS",
     minimumFractionDigits: 2, maximumFractionDigits: 2
   });
-  function money(n) { return fmtARS.format(n || 0); }
+  var fmtARS0 = new Intl.NumberFormat("es-AR", {
+    style: "currency", currency: "ARS",
+    minimumFractionDigits: 0, maximumFractionDigits: 0
+  });
+  function money(n) {
+    var v = Number(n) || 0;
+    return (v % 1 === 0 ? fmtARS0 : fmtARS).format(v);
+  }
 
   // Minúsculas y sin acentos, para que "sabana" encuentre "sábana"
   function norm(s) {

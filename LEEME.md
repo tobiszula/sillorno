@@ -26,7 +26,8 @@ Todo lo que se guarda se ve en la web **enseguida**, sin publicar nada de nuevo.
 
 ### Cosas para tener en cuenta
 
-- **Los precios se escriben sin puntos de miles**: `24402.84`, no `24.402,84`.
+- **Los precios se escriben sin puntos de miles**: `24400`, no `24.400`.
+  Están todos redondeados a los 100; si cargás centavos, la web los muestra.
 - **Las fotos se suben desde el panel.** Se achican y se convierten a WebP
   solas, así que se puede subir una foto sacada con el celular sin problema.
 - **No hay control de stock.** Como no se compra desde la web, todas las
