@@ -76,9 +76,11 @@ to sign up»*. Así nadie más se puede crear una cuenta.
 
 ### 5. Conectar la web con la base
 
-En Supabase: **Settings → API**. De ahí salen los dos datos.
+**Lo más rápido: la integración oficial.** En Vercel → *Integrations* → buscar
+**Supabase** → conectarla con el proyecto. Carga sola las variables que hacen
+falta, entre otra decena que este sitio no usa.
 
-**En Vercel** (o Netlify) se cargan como variables de entorno, en
+**A mano**, si preferís: Supabase → *Settings → API*, y en Vercel →
 *Settings → Environment Variables*:
 
 | Variable | Valor |
@@ -89,6 +91,18 @@ En Supabase: **Settings → API**. De ahí salen los dos datos.
 Marcalas para *Production*, *Preview* y *Development*. En cada deploy, Vercel
 corre `tools/build-config.js` (está puesto como `buildCommand` en
 `vercel.json`) y ese script genera `lib/supabase-config.js` con esos valores.
+
+El script acepta varios nombres, así que sirve tanto lo que pone la integración
+como lo cargado a mano. Para la URL busca `SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_URL` o `VITE_SUPABASE_URL`; para la clave,
+`SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` o
+`SUPABASE_PUBLISHABLE_KEY`. En el log del build queda escrito cuál encontró.
+
+> ⚠️ El script **nunca** lee `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`
+> ni `POSTGRES_URL` (esta última lleva la contraseña de la base adentro). Por
+> eso los nombres se buscan exactos, uno por uno, en vez de por parecido. Y si
+> alguna vez una clave secreta llegara a la variable equivocada, **corta el
+> build** en lugar de publicarla.
 
 > **Si cambiás una variable, hay que volver a deployar.** El archivo se genera
 > durante el build; tocar la variable sola no alcanza.

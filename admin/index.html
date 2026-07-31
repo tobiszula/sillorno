@@ -55,12 +55,15 @@
       <h1>Falta conectar la base</h1>
     </header>
     <div class="caja caja-texto">
-      <p>No están cargadas las claves de Supabase. En Vercel se configuran en
-        <strong>Settings → Environment Variables</strong>:</p>
-      <p><code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code></p>
-      <p class="hint">Acordate de volver a deployar después de cargarlas: el
-        archivo de configuración se genera durante el build. Los pasos completos
-        están en <code>LEEME.md</code>.</p>
+      <p>No están cargadas las claves de Supabase. Lo más rápido es activar la
+        <strong>integración de Supabase</strong> en Vercel, que las pone solas.</p>
+      <p class="hint">Si preferís a mano, en <strong>Settings → Environment
+        Variables</strong> alcanza con <code>SUPABASE_URL</code> y
+        <code>SUPABASE_ANON_KEY</code> (también sirven las
+        <code>NEXT_PUBLIC_…</code>).</p>
+      <p class="hint">En los dos casos hay que <strong>volver a deployar</strong>
+        después: el archivo de configuración se genera durante el build. El log
+        del build dice exactamente qué encontró y qué falta.</p>
     </div>
     <p class="firma">Hecho por <span>Koda</span></p>
   </div>
