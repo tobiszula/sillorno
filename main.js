@@ -477,10 +477,35 @@
   /* ===================================================  FICHA DE PRODUCTO */
   var pdState = { pid: null, medida: null, estampado: null, qty: 1 };
 
+  // Qué foto mostrar según lo elegido. Prioridad: medida con foto propia >
+  // color elegido > estampado > foto principal.
+  function currentPdImage(p) {
+    var v = variante(p, pdState.medida) || p.variantes[0];
+    var fc = p.fotosColor || {};
+    var est = (p.estampados || []).filter(function (e) { return e.slug === pdState.estampado; })[0];
+    if (v && v.foto) return v.foto;
+    if (pdState.color && fc[pdState.color]) return fc[pdState.color];
+    if (est) return est.img;
+    return p.img;
+  }
+
+  // Cambia sólo la foto de arriba (sin redibujar toda la ficha), con un fundido.
+  function updatePdImage() {
+    var p = byId(pdState.pid); if (!p) return;
+    var el = $("[data-pd-img]"); if (!el) return;
+    var src = currentPdImage(p);
+    if (el.getAttribute("src") === src) return;
+    el.style.opacity = "0";
+    var pre = new Image();
+    pre.onload = pre.onerror = function () { el.src = src; el.style.opacity = "1"; };
+    pre.src = src;
+  }
+
   function productHTML(p) {
     var v = variante(p, pdState.medida) || p.variantes[0];
     var est = (p.estampados || []).filter(function (e) { return e.slug === pdState.estampado; })[0];
-    var img = est ? est.img : p.img;
+    var fotosColor = p.fotosColor || {};
+    var img = currentPdImage(p);
     var agotado = v.stock === "agotado";
 
     var opciones = (p.variantes || []).map(function (x) {
@@ -503,14 +528,31 @@
         }).join("") + "</div></div>";
     }
 
+    // Lista de colores = los del producto + cualquiera que tenga foto propia.
+    var colorList = (p.colores || []).slice();
+    Object.keys(fotosColor).forEach(function (c) { if (colorList.indexOf(c) < 0) colorList.push(c); });
+    var hayFotosColor = Object.keys(fotosColor).length > 0;
+
     var colores = "";
-    if (p.colores && p.colores.length) {
-      colores = '<div class="pd-block"><h4>Colores disponibles</h4><div class="dots">' +
-        p.colores.map(function (c) {
-          return '<i style="background:' + (COLORES[c] || "#888") + '" title="' + esc(c) + '"></i>';
-        }).join("") + "</div>" +
-        '<p class="card-spec" style="margin-top:.5rem">' + esc(p.colores.join(" · ")) +
-        ". Nos decís cuál querés al cerrar el pedido por WhatsApp.</p></div>";
+    if (colorList.length) {
+      if (hayFotosColor) {
+        // Swatches clickeables: al tocar uno con foto, cambia la imagen de arriba.
+        colores = '<div class="pd-block"><h4>Color' +
+          (pdState.color ? " · " + esc(pdState.color) : " · tocá para ver") + "</h4>" +
+          '<div class="swatches">' + colorList.map(function (c) {
+            return '<button type="button" class="swatch' +
+              (pdState.color === c ? " is-active" : "") + (fotosColor[c] ? " has-foto" : "") + '" ' +
+              'data-pick-color="' + esc(c) + '" title="' + esc(c) + '" aria-label="' + esc(c) + '" ' +
+              'style="--sw:' + (COLORES[c] || "#888") + '"></button>';
+          }).join("") + "</div></div>";
+      } else {
+        colores = '<div class="pd-block"><h4>Colores disponibles</h4><div class="dots">' +
+          colorList.map(function (c) {
+            return '<i style="background:' + (COLORES[c] || "#888") + '" title="' + esc(c) + '"></i>';
+          }).join("") + "</div>" +
+          '<p class="card-spec" style="margin-top:.5rem">' + esc(colorList.join(" · ")) +
+          ". Nos decís cuál querés al cerrar el pedido por WhatsApp.</p></div>";
+      }
     }
 
     var stockClass = v.stock === "ultimas" ? " is-ultimas" : (agotado ? " is-agotado" : "");
@@ -559,6 +601,7 @@
       pid: pid,
       medida: primera.medida,
       estampado: p.estampados && p.estampados.length ? p.estampados[0].slug : null,
+      color: null,   // arranca en la foto principal; al tocar un color, cambia
       qty: 1
     };
     renderProduct();
@@ -851,6 +894,18 @@
       }
       if ((el = e.target.closest("[data-pick-est]"))) {
         pdState.estampado = el.getAttribute("data-pick-est"); renderProduct(); return;
+      }
+      if ((el = e.target.closest("[data-pick-color]"))) {
+        var pickC = el.getAttribute("data-pick-color");
+        // Volver a tocar el color activo vuelve a la foto principal.
+        pdState.color = (pdState.color === pickC) ? null : pickC;
+        updatePdImage();
+        $$("[data-pick-color]").forEach(function (b) {
+          b.classList.toggle("is-active", b.getAttribute("data-pick-color") === pdState.color);
+        });
+        var blk = el.closest(".pd-block"); var h4 = blk && blk.querySelector("h4");
+        if (h4) h4.textContent = "Color" + (pdState.color ? " · " + pickC : " · tocá para ver");
+        return;
       }
       if ((el = e.target.closest("[data-qty]"))) {
         pdState.qty = Math.max(1, Math.min(99, pdState.qty + Number(el.getAttribute("data-qty"))));

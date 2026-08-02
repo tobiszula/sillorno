@@ -56,6 +56,7 @@ create table if not exists public.variantes (
   -- El panel no toca el stock (no se compra desde la web): queda "disponible".
   stock       text not null default 'disponible'
               check (stock in ('disponible', 'ultimas', 'agotado')),
+  foto        text,                                -- foto propia de esta medida (opcional)
   orden       int not null default 0,
   unique (producto_id, medida)
 );
@@ -74,6 +75,20 @@ create table if not exists public.estampados (
 );
 
 create index if not exists estampados_producto_idx on public.estampados (producto_id);
+
+-- Fotos por color ----------------------------------------------------------
+-- Una foto por color de un producto. Al tocar el color en la web, cambia la
+-- imagen de la ficha. (Ver también db/fotos-por-color.sql)
+create table if not exists public.color_fotos (
+  id          bigint generated always as identity primary key,
+  producto_id text not null references public.productos(id) on update cascade on delete cascade,
+  color       text not null,
+  img         text not null,
+  orden       int not null default 0,
+  unique (producto_id, color)
+);
+
+create index if not exists color_fotos_producto_idx on public.color_fotos (producto_id);
 
 -- Sets / combos ------------------------------------------------------------
 create table if not exists public.combos (
@@ -130,7 +145,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['categorias','productos','variantes','estampados','combos','combo_items']
+  foreach t in array array['categorias','productos','variantes','estampados','color_fotos','combos','combo_items']
   loop
     execute format('alter table public.%I enable row level security', t);
 
@@ -219,6 +234,10 @@ as $$
                  'descripcion', p.descripcion,
                  'specs',       to_jsonb(p.specs),
                  'colores',     to_jsonb(p.colores),
+                 'fotosColor',  (
+                   select coalesce(jsonb_object_agg(cf.color, cf.img), '{}'::jsonb)
+                   from public.color_fotos cf where cf.producto_id = p.id
+                 ),
                  'estampados',  coalesce((
                    select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
                             'slug', e.slug, 'nombre', e.nombre, 'img', e.img
@@ -228,7 +247,7 @@ as $$
                  'variantes',   coalesce((
                    select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
                             'medida', v.medida, 'detalle', v.detalle,
-                            'precio', v.precio, 'stock', v.stock
+                            'precio', v.precio, 'stock', v.stock, 'foto', v.foto
                           )) order by v.orden, v.precio desc)
                    from public.variantes v where v.producto_id = p.id
                  ), '[]'::jsonb)

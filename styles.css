@@ -185,6 +185,27 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   display: block;
 }
 
+/* Swatches de color clickeables (cambian la foto de la ficha) */
+.swatches { display: flex; gap: .6rem; flex-wrap: wrap; }
+.swatch {
+  position: relative; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--sw, #888);
+  border: 1px solid rgba(242, 235, 228, .35);
+  cursor: pointer; padding: 0;
+  transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out);
+}
+.swatch:hover { transform: scale(1.08); }
+/* Un color que tiene foto propia muestra un puntito para invitar a tocarlo */
+.swatch.has-foto::after {
+  content: ""; position: absolute; inset: auto 2px 2px auto;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cream); box-shadow: 0 0 0 1.5px var(--bg-2);
+}
+.swatch.is-active {
+  box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--wine-soft);
+}
+.swatch.is-active::after { background: var(--wine-soft); }
+
 /* Indicador de stock */
 .stock { display: inline-flex; align-items: center; gap: .4rem; font-size: .74rem; color: var(--cream-3); }
 .stock::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
@@ -646,7 +667,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 .pd-close { position: absolute; top: .6rem; right: .6rem; z-index: 3; background: rgba(13, 10, 11, .6); }
 .pd { position: relative; }
 .pd-media { position: relative; aspect-ratio: 4 / 3; background: var(--bg-4); }
-.pd-media img { width: 100%; height: 100%; object-fit: cover; }
+.pd-media img { width: 100%; height: 100%; object-fit: cover; transition: opacity .28s var(--ease-out); }
 
 .pd-body { padding: 1.2rem var(--pad) 1.6rem; display: flex; flex-direction: column; gap: 1rem; }
 .pd-cat { font-size: .64rem; letter-spacing: .18em; text-transform: uppercase; color: var(--cream-3); }

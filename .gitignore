@@ -3,3 +3,6 @@ node_modules/
 *.zip
 .DS_Store
 Thumbs.db
+
+# Fotos fuente sin procesar (no van al deploy)
+Productos colores/
