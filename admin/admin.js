@@ -100,7 +100,7 @@
   function cargarTodo() {
     return Promise.all([
       SB.from("categorias").select("*"),
-      SB.from("productos").select("*, variantes(*), estampados(*)"),
+      SB.from("productos").select("*, variantes(*), estampados(*), color_fotos(*)"),
       SB.from("combos").select("*, combo_items(*)"),
     ]).then(function (res) {
       res.forEach(function (r) { if (r.error) throw r.error; });
@@ -108,8 +108,9 @@
       PRODS = (res[1].data || []).sort(porOrden);
       SETS  = (res[2].data || []).sort(porOrden);
       PRODS.forEach(function (p) {
-        p.variantes  = (p.variantes  || []).sort(porOrden);
-        p.estampados = (p.estampados || []).sort(porOrden);
+        p.variantes    = (p.variantes    || []).sort(porOrden);
+        p.estampados   = (p.estampados   || []).sort(porOrden);
+        p.color_fotos  = (p.color_fotos  || []).sort(porOrden);
       });
       SETS.forEach(function (s) {
         s.combo_items = (s.combo_items || []).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0); });
@@ -168,14 +169,16 @@
     });
   }
 
-  // Bloque reutilizable: miniatura + botón "Cambiar foto"
-  function fotoHTML(url, campo, mini) {
+  // Bloque reutilizable: miniatura + botón "Cambiar foto" (+ "Quitar" si conQuitar)
+  function fotoHTML(url, campo, mini, conQuitar) {
     return '<div class="foto' + (mini ? " foto-mini" : "") + '" data-foto="' + esc(campo) + '">' +
       '<img src="' + esc(verFoto(url)) + '" alt="" data-foto-prev' +
         (url ? "" : ' style="visibility:hidden"') + '>' +
       '<div class="foto-acc">' +
         '<button type="button" class="btn btn-sm" data-foto-btn>' +
           (url ? "Cambiar foto" : "Subir foto") + "</button>" +
+        (conQuitar ? '<button type="button" class="btn btn-sm btn-danger" data-foto-quitar' +
+          (url ? "" : ' hidden') + ">Quitar</button>" : "") +
         '<span class="foto-nota" data-foto-nota>' +
           (url ? "" : "JPG, PNG o WebP") + "</span>" +
       "</div>" +
@@ -186,6 +189,17 @@
 
   // Un solo listener para todas las fotos del editor
   document.addEventListener("click", function (e) {
+    var quitar = e.target.closest("[data-foto-quitar]");
+    if (quitar) {
+      var cajaQ = quitar.closest("[data-foto]");
+      $("[data-campo]", cajaQ).value = "";
+      var imgQ = $("[data-foto-prev]", cajaQ);
+      imgQ.removeAttribute("src"); imgQ.style.visibility = "hidden";
+      $("[data-foto-btn]", cajaQ).textContent = "Subir foto";
+      $("[data-foto-nota]", cajaQ).textContent = "JPG, PNG o WebP";
+      quitar.hidden = true;
+      return;
+    }
     var btn = e.target.closest("[data-foto-btn]");
     if (!btn) return;
     $("[data-foto-file]", btn.closest("[data-foto]")).click();
@@ -203,6 +217,9 @@
       img.src = url;
       img.style.visibility = "visible";
       nota.textContent = "Listo";
+      $("[data-foto-btn]", caja).textContent = "Cambiar foto";
+      var quitarBtn = $("[data-foto-quitar]", caja);
+      if (quitarBtn) quitarBtn.hidden = false;
     }).catch(function (err) {
       nota.textContent = "";
       toast("No se pudo subir la foto: " + detalle(err), true);
@@ -304,6 +321,29 @@
       fotoHTML(es.img, "e-img", true) +
       '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
     "</div>";
+  }
+
+  // El campo del input de foto para un color es "cf__<color>"
+  function colorFotoCampo(c) { return "cf__" + c; }
+
+  // Fila por color de la paleta con su miniatura: subir / cambiar / quitar.
+  // Sólo se ve la fila de los colores tildados arriba (se muestra/oculta con JS).
+  function fotosColorHTML(p, paleta) {
+    var mapa = {};
+    (p.color_fotos || []).forEach(function (cf) { mapa[cf.color] = cf.img; });
+    var onColores = p.colores || [];
+    return "<fieldset><legend>Fotos por color <span class=\"hint\">" +
+      "(opcional — se usa en la ficha del producto al tocar cada color)</span></legend>" +
+      '<div class="colores-fotos">' +
+      paleta.map(function (c) {
+        var on = onColores.indexOf(c) >= 0;
+        return '<div class="color-foto-row" data-color-foto-row="' + esc(c) + '"' +
+          (on ? "" : " hidden") + '>' +
+          '<p class="color-foto-nombre">' + esc(c) + '</p>' +
+          fotoHTML(mapa[c], colorFotoCampo(c), true, true) +
+        "</div>";
+      }).join("") +
+      "</div></fieldset>";
   }
 
   function opcionesProducto(sel) {
@@ -521,6 +561,8 @@
         }).join("") +
       "</div></fieldset>" +
 
+      fotosColorHTML(p, paleta) +
+
       "<fieldset><legend>Medidas y precios</legend>" +
         '<div class="rep" data-rep="variantes">' +
           (p.variantes || []).map(filaVarianteHTML).join("") +
@@ -576,6 +618,13 @@
       var colores = $$("[data-color]", body).filter(function (c) { return c.checked; })
         .map(function (c) { return c.value; });
 
+      // Foto de cada color tildado (si el cliente subió una)
+      var colorFotos = colores.map(function (c) {
+        var campo = $('[data-campo="' + colorFotoCampo(c) + '"]', body);
+        var url = campo ? String(campo.value || "").trim() : "";
+        return url ? { color: c, img: url } : null;
+      }).filter(Boolean);
+
       var id = nuevo
         ? idLibre(nombre, PRODS.map(function (x) { return x.id; }))
         : p.id;
@@ -617,6 +666,15 @@
         return SB.from("estampados").insert(estampados.map(function (e) {
           e.producto_id = id;
           return e;
+        }));
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        return SB.from("color_fotos").delete().eq("producto_id", id);
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        if (!colorFotos.length) return { error: null };
+        return SB.from("color_fotos").insert(colorFotos.map(function (cf, i) {
+          return { producto_id: id, color: cf.color, img: cf.img, orden: i };
         }));
       }).then(function (r) {
         if (r.error) throw r.error;
@@ -983,10 +1041,13 @@
     if (e.target.closest("[data-importar]"))        return importarManifest();
   });
 
-  // Chips de color: marcar / desmarcar
+  // Chips de color: marcar / desmarcar, y mostrar/ocultar su fila de foto
   document.addEventListener("change", function (e) {
     var c = e.target.closest("[data-color]");
-    if (c) c.closest(".color-chip").classList.toggle("is-on", c.checked);
+    if (!c) return;
+    c.closest(".color-chip").classList.toggle("is-on", c.checked);
+    var row = $('[data-color-foto-row="' + c.value + '"]', $("[data-editor-body]"));
+    if (row) row.hidden = !c.checked;
   });
 
   /* ================================================================ LOGIN = */

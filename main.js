@@ -328,6 +328,23 @@
     return '<div class="fgroup"><h4>' + esc(titulo) + '</h4><div class="fopts">' + opts + "</div></div>";
   }
 
+  // Cuenta Medida/Material sólo entre los productos de las categorías activas,
+  // así esos filtros no ofrecen valores que no existen ahí (ej. "Queen" en Toallas).
+  function countByEnCategoria(getter) {
+    var universo = state.cats.length
+      ? PRODUCTOS.filter(function (p) { return state.cats.indexOf(p.categoria) >= 0; })
+      : PRODUCTOS;
+    var map = {};
+    universo.forEach(function (p) {
+      var vals = getter(p);
+      (Array.isArray(vals) ? vals : [vals]).forEach(function (v) {
+        if (!v) return;
+        map[v] = (map[v] || 0) + 1;
+      });
+    });
+    return map;
+  }
+
   function mountFiltros() {
     var box = $("[data-filtros-body]"); if (!box) return;
 
@@ -336,7 +353,7 @@
       .filter(function (c) { return catCount[c.nombre]; })
       .map(function (c) { return { value: c.id, label: c.nombre, n: catCount[c.nombre] }; });
 
-    var medCount = countBy(function (p) {
+    var medCount = countByEnCategoria(function (p) {
       return p._medidas.filter(function (v, i, a) { return a.indexOf(v) === i; });
     });
     var medOrder = MEDIDA_WORDS.slice();
@@ -348,10 +365,15 @@
       return a.localeCompare(b, "es");
     }).map(function (m) { return { value: m, label: m, n: medCount[m] }; });
 
-    var matCount = countBy(function (p) { return p._material; });
+    var matCount = countByEnCategoria(function (p) { return p._material; });
     var materiales = Object.keys(matCount).sort().map(function (m) {
       return { value: m, label: m, n: matCount[m] };
     });
+
+    // Si al cambiar de categoría una medida/material seleccionado dejó de
+    // existir en ese universo, lo destildamos solo (no tiene sentido dejarlo marcado).
+    state.medidas = state.medidas.filter(function (m) { return medCount[m]; });
+    state.materiales = state.materiales.filter(function (m) { return matCount[m]; });
 
     box.innerHTML =
       groupHTML("Categoría", "cats", cats, state.cats) +

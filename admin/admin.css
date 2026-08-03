@@ -522,6 +522,27 @@ legend .hint { font-size: 10px; letter-spacing: .14em; text-transform: none; }
 }
 .color-chip.is-on { color: var(--txt); border-color: var(--acc); background: var(--acc-soft); }
 
+/* fotos por color */
+.colores-fotos { display: flex; flex-direction: column; gap: .7rem; }
+.color-foto-row {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  padding: .6rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--bg-3);
+}
+.color-foto-row[hidden] { display: none; }
+.color-foto-nombre {
+  font-size: 13px;
+  font-weight: 600;
+  width: 90px;
+  flex: none;
+}
+.color-foto-row .foto { gap: .7rem; }
+.color-foto-row .foto-acc { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+
 /* --------------------------------------------------------------- toast --- */
 .toast {
   position: fixed;
