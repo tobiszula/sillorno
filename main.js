@@ -842,6 +842,9 @@
           if (input.checked && i < 0) arr.push(v);
           if (!input.checked && i >= 0) arr.splice(i, 1);
         }
+        // Si cambió la categoría, Medida y Material dependen de ella:
+        // hay que reconstruir esas listas (no sólo reaplicar el filtro).
+        if (key === "cats") mountFiltros();
         aplicar(true);
         return;
       }
