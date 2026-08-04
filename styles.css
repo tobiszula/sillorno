@@ -235,6 +235,16 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   border-bottom-color: var(--line);
 }
+/* En celular el header NUNCA es transparente, ni siquiera sobre el hero
+   (a diferencia de desktop, donde sí se pidió ese efecto). */
+@media (max-width: 719px) {
+  .header {
+    background: rgba(13, 10, 11, .96);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-bottom-color: var(--line);
+  }
+}
 @supports not (backdrop-filter: blur(4px)) { .header.is-stuck { background: rgba(13, 10, 11, .99); } }
 
 .header-inner {
