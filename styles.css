@@ -18,15 +18,20 @@
   --cream-2:   #D4C8C0;
   --cream-3:   #9A8B85;
 
-  /* Acento: bordó / vino */
-  --wine-deep: #3E0E1B;
-  --wine:      #7A1E33;
-  --wine-lift: #9E2A44;
-  --wine-soft: #CE8595;
+  /* Acento: terracota, el mismo tono que la foto del hero */
+  --wine-deep: #4A2A18;
+  --wine:      #A8603A;
+  --wine-lift: #C17847;
+  --wine-soft: #D6A684;
 
   --gold:      #C9A87C;
   --ok:        #7FA37F;
   --warn:      #C9A15B;
+
+  /* Alias del acento del hero — mismo color que --wine, se usan por separado
+     porque nacieron en el mockup del hero antes de unificar la paleta. */
+  --rust:      var(--wine);
+  --rust-soft: var(--wine-soft);
 
   --line:      rgba(242, 235, 228, .10);
   --line-2:    rgba(242, 235, 228, .20);
@@ -215,14 +220,20 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 /* ============================================================  6. HEADER */
 .header {
   position: sticky; top: 0; z-index: 100;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 1px solid transparent;
+  transition: background .4s var(--ease-out), border-color .4s var(--ease-out),
+              backdrop-filter .4s var(--ease-out);
+}
+.header.is-stuck {
   background: rgba(13, 10, 11, .72);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
-  border-bottom: 1px solid transparent;
-  transition: background .4s var(--ease-out), border-color .4s var(--ease-out);
+  border-bottom-color: var(--line);
 }
-@supports not (backdrop-filter: blur(4px)) { .header { background: rgba(13, 10, 11, .96); } }
-.header.is-stuck { background: rgba(13, 10, 11, .93); border-bottom-color: var(--line); }
+@supports not (backdrop-filter: blur(4px)) { .header.is-stuck { background: rgba(13, 10, 11, .96); } }
 
 .header-inner {
   max-width: var(--wrap); margin-inline: auto;
@@ -294,25 +305,28 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 /* ==============================================================  7. HERO */
 .hero {
   position: relative;
-  min-height: 88svh;
+  /* El header es transparente arriba de todo: para que se vea la foto (y no
+     el fondo negro de la página) detrás suyo, el hero sube y ocupa también
+     el espacio que reserva el header en el flujo normal. */
+  margin-top: calc(-1 * var(--header-h));
+  min-height: calc(88svh + var(--header-h));
   display: flex; align-items: flex-end;
   padding: 0 0 clamp(2.5rem, 7vw, 5rem);
   overflow: hidden;
 }
 .hero-media { position: absolute; inset: 0; }
 .hero-media img {
-  width: 100%; height: 100%; object-fit: cover; object-position: 62% center;
-  filter: saturate(.92) contrast(1.04);
-  animation: heroDrift 26s ease-in-out infinite alternate;
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 24%;
+  filter: brightness(1.14) saturate(.94) contrast(1.04);
 }
-@keyframes heroDrift { from { transform: scale(1.04); } to { transform: scale(1.13); } }
+/* A partir de acá entra la foto de desktop (ver el <source> en el HTML) */
+@media (min-width: 720px) {
+  .hero-media img { object-position: 44% 28%; }
+}
 
 .hero-veil {
   position: absolute; inset: 0;
-  background:
-    radial-gradient(80% 60% at 18% 78%, rgba(62, 14, 27, .62) 0%, transparent 68%),
-    linear-gradient(180deg, rgba(13, 10, 11, .78) 0%, rgba(13, 10, 11, .34) 32%,
-                    rgba(13, 10, 11, .72) 74%, var(--bg) 100%);
+  background: linear-gradient(180deg, transparent 0%, transparent 56%, rgba(16, 11, 9, .82) 100%);
 }
 
 .hero-inner {
@@ -320,32 +334,39 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   width: 100%; max-width: var(--wrap); margin-inline: auto;
   padding-inline: var(--pad);
 }
-.hero-title {
-  font-family: var(--serif); font-weight: 300;
-  font-size: clamp(2.6rem, 8vw, 5.6rem);
-  line-height: 1.02; letter-spacing: -0.02em;
-  margin: .7rem 0 1.1rem; max-width: 15ch;
+.hero-kicker {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-family: var(--sans); font-size: .78rem; font-weight: 700;
+  letter-spacing: .08em; color: var(--rust-soft);
 }
-.hero-title em { font-style: italic; color: var(--wine-soft); }
+.hero-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rust); flex: none; }
+.hero-title {
+  font-family: var(--sans); font-weight: 700;
+  font-size: clamp(2.2rem, 6.4vw, 4rem);
+  line-height: 1.06; letter-spacing: -0.02em;
+  margin: .7rem 0 0; max-width: 16ch;
+}
+.hero-rule {
+  display: block; width: 74px; height: 3px; margin: 1.3rem 0 1.5rem;
+  background: var(--rust);
+}
 .hero-sub {
   max-width: 44ch; color: var(--cream-2);
   font-size: clamp(.95rem, 1.5vw, 1.08rem);
 }
-/* En celular los dos botones van apilados y del mismo ancho: se ve más prolijo */
-.hero-cta { display: grid; gap: .7rem; margin-top: 1.8rem; max-width: 300px; }
+/* En celular los dos botones van apilados; en desktop, botón + link en fila */
+.hero-cta { display: grid; gap: 1rem; max-width: 300px; align-items: center; }
 @media (min-width: 540px) {
   .hero-cta { display: flex; flex-wrap: wrap; max-width: none; }
 }
-.hero-meta {
-  display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 2rem;
-  font-size: .76rem; letter-spacing: .06em; color: var(--cream-3);
+.hero-link {
+  font-family: var(--sans); font-size: .92rem; font-weight: 600; color: var(--cream);
+  display: inline-flex; align-items: center; gap: .4rem;
+  transition: color .3s var(--ease-out);
 }
-.hero-meta span { display: inline-flex; align-items: center; gap: .45rem; }
-.hero-meta .dot {
-  width: 6px; height: 6px; border-radius: 50%; background: var(--ok);
-  animation: pulse 2.6s ease-in-out infinite;
-}
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.hero-link:hover { color: var(--rust-soft); }
+.hero-link span { transition: transform .3s var(--ease-out); }
+.hero-link:hover span { transform: translateX(3px); }
 
 /* ========================================================  8. CATEGORÍAS */
 .cats {
@@ -592,11 +613,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 }
 .card::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  box-shadow: inset 0 -70px 60px -60px rgba(122, 30, 51, 0);
+  box-shadow: inset 0 -70px 60px -60px rgba(168, 96, 58, 0);
   transition: box-shadow .5s var(--ease-out);
 }
 .card:hover { border-color: var(--line-2); transform: translateY(-4px); box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .9); }
-.card:hover::after { box-shadow: inset 0 -70px 60px -60px rgba(122, 30, 51, .55); }
+.card:hover::after { box-shadow: inset 0 -70px 60px -60px rgba(168, 96, 58, .55); }
 
 .card-media { position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: var(--bg-4); }
 .card-media img {
@@ -691,7 +712,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 }
 .opt small { display: block; font-size: .68rem; color: var(--cream-3); margin-top: 2px; }
 .opt:hover:not(:disabled) { border-color: var(--cream-3); color: var(--cream); }
-.opt.is-active { border-color: var(--wine-soft); background: rgba(122, 30, 51, .22); color: var(--cream); }
+.opt.is-active { border-color: var(--wine-soft); background: rgba(168, 96, 58, .22); color: var(--cream); }
 .opt:disabled { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
 
 /* Galería de estampados */
@@ -869,7 +890,6 @@ body.is-locked { overflow: hidden; }
 
 /* Sólo se frenan los efectos intrusivos, no las microinteracciones */
 @media (prefers-reduced-motion: reduce) {
-  .hero-media img { animation: none; transform: scale(1.04); }
   .hero-meta .dot { animation: none; }
 }
 
@@ -933,5 +953,5 @@ body.is-locked { overflow: hidden; }
 
 @media (min-width: 1280px) {
   .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .hero { min-height: 92svh; }
+  .hero { min-height: calc(92svh + var(--header-h)); }
 }

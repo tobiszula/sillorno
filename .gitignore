@@ -6,3 +6,5 @@ Thumbs.db
 
 # Fotos fuente sin procesar (no van al deploy)
 Productos colores/
+
+.vercel
