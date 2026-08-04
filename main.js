@@ -54,8 +54,8 @@
 
   /* ------------------------------------------------- datos normalizados -- */
   // Etiqueta de medida útil para filtrar (no la dimensión cruda cuando hay
-  // un nombre comercial más claro, como "Toallón XL" o "2 plazas").
-  var MEDIDA_WORDS = ["Toallón XL", "Toallón", "Toalla", "Piso",
+  // un nombre comercial más claro, como "Toallón" o "2 plazas").
+  var MEDIDA_WORDS = ["Toallón", "Toalla", "Toalla de mano", "Piso",
                       "1 plaza", "2 plazas", "Queen", "King"];
 
   function medidaLabel(v) {

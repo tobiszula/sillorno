@@ -308,7 +308,7 @@
   function filaVarianteHTML(v) {
     return '<div class="rep-fila" data-fila>' +
       '<input type="text" data-v-medida placeholder="85 × 150 cm" value="' + esc(v.medida || "") + '">' +
-      '<input type="text" data-v-detalle placeholder="Toallón XL" value="' + esc(v.detalle || "") + '">' +
+      '<input type="text" data-v-detalle placeholder="Toallón" value="' + esc(v.detalle || "") + '">' +
       '<input type="number" step="0.01" min="0" data-v-precio placeholder="0.00" value="' +
         esc(v.precio != null ? v.precio : "") + '">' +
       '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
