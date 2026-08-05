@@ -101,6 +101,35 @@ if (!urlOK || !keyOK) {
 // Sólo escapamos comillas y barras: son valores de configuración, no texto libre.
 const comillas = (s) => JSON.stringify(String(s));
 
+/* ---------------------------------------------------------- CLOUDINARY ---
+   Sólo hace falta el "cloud name", que es público (aparece en todas las URLs
+   de las fotos). La API key y el secreto NO se leen acá: no tienen nada que
+   hacer en el navegador.
+
+   Si la variable no está, las fotos se sirven como hasta ahora desde
+   /assets/img/ y no cambia nada. */
+const NOMBRES_CLOUD = [
+  "CLOUDINARY_CLOUD_NAME", "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_NAME", "VITE_CLOUDINARY_CLOUD_NAME",
+];
+const elCLOUD = primera(NOMBRES_CLOUD);
+let cloud = elCLOUD.valor;
+
+// La integración de Vercel define CLOUDINARY_URL (cloudinary://key:secret@cloud).
+// De ahí sacamos SÓLO el cloud name; la key y el secreto quedan afuera.
+if (!cloud) {
+  const m = String(process.env.CLOUDINARY_URL || "").match(/@([a-z0-9_-]+)\s*$/i);
+  if (m) { cloud = m[1]; elCLOUD.nombre = "CLOUDINARY_URL"; }
+}
+
+const cloudOK = /^[a-z0-9_-]{2,}$/i.test(cloud);
+const carpeta = String(process.env.CLOUDINARY_CARPETA || "sillorno").trim();
+
+if (cloud && !cloudOK) {
+  console.warn("  ⚠  SILLORNO: el cloud name de Cloudinary parece inválido: " + cloud);
+  console.warn("     Se siguen usando las fotos de /assets/img/.");
+}
+
 const contenido = `/* =============================================================================
    SILLORNO — conexión con la base de datos
 
@@ -117,6 +146,13 @@ window.__SUPABASE__ = {
   url: ${comillas(urlOK && keyOK ? url : "")},
   anonKey: ${comillas(urlOK && keyOK ? key : "")},
 };
+
+/* Cloudinary: sólo el "cloud name", que es público. Si está vacío, las fotos
+   se sirven desde /assets/img/ como siempre. */
+window.__CLOUDINARY__ = {
+  cloud: ${comillas(cloudOK ? cloud : "")},
+  carpeta: ${comillas(carpeta || "sillorno")},
+};
 `;
 
 fs.writeFileSync(destino, contenido, "utf8");
@@ -125,4 +161,9 @@ console.log(
   urlOK && keyOK
     ? "  ✓ SILLORNO: lib/supabase-config.js generado (" + url + ")"
     : "  · SILLORNO: lib/supabase-config.js generado vacío (modo respaldo)"
+);
+console.log(
+  cloudOK
+    ? "  ✓ SILLORNO: fotos desde Cloudinary (" + cloud + " / carpeta " + carpeta + ")"
+    : "  · SILLORNO: fotos desde /assets/img/ (Cloudinary sin configurar)"
 );

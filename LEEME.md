@@ -128,6 +128,45 @@ node tools/build-config.js
 Eso genera el archivo local. Ojo: queda modificado en git, no lo commitees con
 las claves adentro (no es grave si pasa, pero ensucia).
 
+### 5c. Fotos por Cloudinary (opcional)
+
+Las fotos se sirven desde `/assets/img/` y funciona bien. Cloudinary suma que
+cada dispositivo reciba el **formato y el ancho justos** (AVIF o WebP, 600px en
+una tarjeta en vez de 1400), que en un catálogo de fotos es la diferencia
+grande en velocidad.
+
+**No hay que migrar la base ni tocar Supabase.** El sitio traduce solo las
+rutas: `assets/img/toallon-icone.webp` pasa a ser la URL de Cloudinary. Si la
+variable no está, vuelve a las fotos locales.
+
+1. Crear la cuenta en [cloudinary.com](https://cloudinary.com) (plan gratis).
+2. Subir las fotos que ya existen, una sola vez, desde tu computadora:
+
+   ```bash
+   export CLOUDINARY_URL="cloudinary://<key>:<secret>@<cloud_name>"
+   node tools/subir-cloudinary.js
+   ```
+
+   Con `--simular` muestra qué haría sin subir nada.
+
+3. En Vercel → *Settings → Environment Variables*:
+
+   | Variable | Valor |
+   |---|---|
+   | `CLOUDINARY_CLOUD_NAME` | el **Cloud name** del dashboard |
+
+   Si activás la integración de Cloudinary en Vercel, define `CLOUDINARY_URL`
+   sola y el build saca el cloud name de ahí. **La API key y el secreto nunca
+   llegan al navegador**: el build sólo publica el cloud name, que es público.
+
+4. Volver a deployar. En el log tiene que decir
+   `✓ SILLORNO: fotos desde Cloudinary (...)`.
+
+Para volver atrás: se borra la variable y se deploya de nuevo.
+
+Las fotos que sube el vendedor desde el panel siguen yendo a Supabase Storage
+y se muestran igual: el traductor deja pasar las URLs absolutas sin tocarlas.
+
 ### 6. Cargar el catálogo inicial
 
 Entrar a `/admin/`. Como la base está vacía, aparece el botón **«Importar el

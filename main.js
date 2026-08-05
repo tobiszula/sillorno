@@ -197,7 +197,7 @@
     var tiles = CATEGORIAS.map(function (c) {
       return '<button class="cat-banner" type="button" data-cat-tile="' + esc(c.id) + '" ' +
              'aria-label="Ver ' + esc(c.nombre) + '">' +
-             '<img src="' + esc(c.img) + '" alt="" loading="lazy" decoding="async">' +
+             '<img src="' + esc(foto(c.img, 720)) + '" alt="" loading="lazy" decoding="async">' +
              '<span class="cat-banner-txt">' +
                '<span class="cat-banner-name">' + esc(c.corto || c.nombre) + '</span>' +
                (c.sub ? '<span class="cat-banner-sub">' + esc(c.sub) + '</span>' : '') +
@@ -234,7 +234,7 @@
     return '<article class="card" data-card="' + esc(p.id) + '">' +
       '<button class="card-media" type="button" data-open-product="' + esc(p.id) + '" ' +
         'aria-label="Ver ' + esc(p.nombre) + '">' +
-        '<img src="' + esc(p.img) + '" alt="' + esc(p.nombre) + '" loading="lazy" decoding="async">' +
+        '<img src="' + esc(foto(p.img, 600)) + '" alt="' + esc(p.nombre) + '" loading="lazy" decoding="async">' +
         (flags ? '<span class="card-flags">' + flags + "</span>" : "") +
       "</button>" +
       '<div class="card-body">' +
@@ -285,7 +285,7 @@
                (it.cantidad > 1 ? " ×" + it.cantidad : "") + "</li>" : "";
       }).join("");
       return '<article class="combo reveal">' +
-        '<div class="combo-media"><img src="' + esc(c.img) + '" alt="' + esc(c.nombre) +
+        '<div class="combo-media"><img src="' + esc(foto(c.img, 720)) + '" alt="' + esc(c.nombre) +
           '" loading="lazy" decoding="async"></div>' +
         '<div class="combo-body">' +
           '<h3 class="combo-name">' + esc(c.nombre) + "</h3>" +
@@ -499,6 +499,38 @@
   /* ===================================================  FICHA DE PRODUCTO */
   var pdState = { pid: null, medida: null, estampado: null, qty: 1 };
 
+  /* ============================================================== FOTOS ==
+     Traductor de imágenes. Si hay un "cloud name" de Cloudinary configurado,
+     las rutas locales (assets/img/algo.webp) se sirven desde Cloudinary con
+     el formato y el ancho justos para cada lugar. Si no hay nada configurado,
+     devuelve la ruta tal cual y todo sigue funcionando igual que hoy.
+
+     Por eso la base puede seguir guardando "assets/img/algo.webp": no hay que
+     migrar nada ni tocar Supabase. */
+  var CLOUD = (window.__CLOUDINARY__ || {}).cloud || "";
+  var CARPETA = (window.__CLOUDINARY__ || {}).carpeta || "sillorno";
+
+  function foto(src, ancho) {
+    var u = String(src || "").trim();
+    if (!u) return "";
+
+    // Ya es una URL de Cloudinary: sólo le metemos el ancho y el formato.
+    if (CLOUD && u.indexOf("res.cloudinary.com/" + CLOUD + "/image/upload/") >= 0) {
+      return u.replace("/image/upload/", "/image/upload/f_auto,q_auto" +
+                       (ancho ? ",w_" + ancho : "") + "/");
+    }
+    // Cualquier otra URL absoluta (Supabase Storage, por ejemplo) se deja igual.
+    if (/^(https?:)?\/\//i.test(u) || u.indexOf("data:") === 0) return u;
+
+    if (!CLOUD) return u;                       // sin Cloudinary: ruta local
+
+    // assets/img/toallon-icone.webp -> sillorno/toallon-icone
+    var nombre = u.replace(/^\/?assets\/img\//, "").replace(/\.[a-z0-9]+$/i, "");
+    if (!nombre) return u;
+    return "https://res.cloudinary.com/" + CLOUD + "/image/upload/f_auto,q_auto" +
+           (ancho ? ",w_" + ancho : "") + "/" + CARPETA + "/" + nombre;
+  }
+
   // La galería: la foto principal primero y después las extra que cargó el
   // vendedor desde el panel. Sin repetidas.
   function galeria(p) {
@@ -568,7 +600,7 @@
         '<div class="pattern-grid">' + p.estampados.map(function (e) {
           return '<button class="pattern' + (e.slug === pdState.estampado ? " is-active" : "") +
             '" type="button" data-pick-est="' + esc(e.slug) + '" aria-label="' + esc(e.nombre) + '">' +
-            '<img src="' + esc(e.img) + '" alt="' + esc(e.nombre) + '" loading="lazy">' +
+            '<img src="' + esc(foto(e.img, 200)) + '" alt="' + esc(e.nombre) + '" loading="lazy">' +
             "<span>" + esc(e.nombre) + "</span></button>";
         }).join("") + "</div></div>";
     }
@@ -608,7 +640,7 @@
         fotos.map(function (src, i) {
           return '<button type="button" class="pd-thumb' + (src === img ? " is-active" : "") + '" ' +
             'data-pick-foto="' + esc(src) + '" aria-label="Ver foto ' + (i + 1) + " de " + fotos.length + '">' +
-            '<img src="' + esc(src) + '" alt="" loading="lazy" decoding="async"></button>';
+            '<img src="' + esc(foto(src, 160)) + '" alt="" loading="lazy" decoding="async"></button>';
         }).join("") + "</div>";
     }
 
@@ -619,7 +651,7 @@
     return '<div class="pd">' +
       '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-      '<div class="pd-media"><img src="' + esc(img) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
+      '<div class="pd-media"><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
         thumbs + "</div>" +
       '<div class="pd-body">' +
         '<div><p class="pd-cat">' + esc(p._cat) + '</p>' +
@@ -715,7 +747,7 @@
           }
           var k = cartKey(it);
           return '<div class="citem">' +
-            '<div class="citem-media"><img src="' + esc(img) + '" alt="" loading="lazy"></div>' +
+            '<div class="citem-media"><img src="' + esc(foto(img, 200)) + '" alt="" loading="lazy"></div>' +
             "<div><p class=\"citem-name\">" + esc(nombre) + "</p>" +
             '<p class="citem-var">' + esc(detalle) + "</p>" +
             '<div class="citem-foot">' +
