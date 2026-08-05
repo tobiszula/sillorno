@@ -100,7 +100,7 @@
   function cargarTodo() {
     return Promise.all([
       SB.from("categorias").select("*"),
-      SB.from("productos").select("*, variantes(*), estampados(*), color_fotos(*)"),
+      SB.from("productos").select("*, variantes(*), estampados(*), color_fotos(*), producto_fotos(*)"),
       SB.from("combos").select("*, combo_items(*)"),
     ]).then(function (res) {
       res.forEach(function (r) { if (r.error) throw r.error; });
@@ -111,6 +111,7 @@
         p.variantes    = (p.variantes    || []).sort(porOrden);
         p.estampados   = (p.estampados   || []).sort(porOrden);
         p.color_fotos  = (p.color_fotos  || []).sort(porOrden);
+        p.producto_fotos = (p.producto_fotos || []).sort(porOrden);
       });
       SETS.forEach(function (s) {
         s.combo_items = (s.combo_items || []).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0); });
@@ -295,6 +296,7 @@
     if (tipo === "variantes")  lista.insertAdjacentHTML("beforeend", filaVarianteHTML({}));
     if (tipo === "estampados") lista.insertAdjacentHTML("beforeend", filaEstampadoHTML({}));
     if (tipo === "items")      lista.insertAdjacentHTML("beforeend", filaItemHTML({}));
+    if (tipo === "galeria")    lista.insertAdjacentHTML("beforeend", filaGaleriaHTML({}));
   });
 
   // Al cambiar el producto de un item de set, se recargan sus medidas
@@ -319,6 +321,17 @@
     return '<div class="rep-fila rep-3" data-fila>' +
       '<input type="text" data-e-nombre placeholder="Nombre del estampado" value="' + esc(es.nombre || "") + '">' +
       fotoHTML(es.img, "e-img", true) +
+      '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
+    "</div>";
+  }
+
+  // Una foto más de la galería: la miniatura y un texto opcional para
+  // accesibilidad ("toallón colgado", "detalle del puño"...).
+  function filaGaleriaHTML(f) {
+    return '<div class="rep-fila rep-3" data-fila>' +
+      '<input type="text" data-g-alt placeholder="Qué se ve (opcional)" value="' +
+        esc(f.alt || "") + '">' +
+      fotoHTML(f.img, "g-img", true) +
       '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
     "</div>";
   }
@@ -551,6 +564,16 @@
 
       "<fieldset><legend>Foto principal</legend>" + fotoHTML(p.img, "img") + "</fieldset>" +
 
+      "<fieldset><legend>Más fotos <span class=\"hint\">" +
+        "(la galería de la ficha: se muestran como miniaturas abajo de la foto grande)" +
+        "</span></legend>" +
+        '<div class="rep" data-rep="galeria">' +
+          (p.producto_fotos || []).map(filaGaleriaHTML).join("") +
+        "</div>" +
+        '<button type="button" class="btn btn-sm" data-rep-add="galeria">+ Agregar foto</button>' +
+        '<p class="hint">Se ordenan como están acá. La foto principal siempre va primera.</p>' +
+      "</fieldset>" +
+
       "<fieldset><legend>Colores</legend><div class=\"colores\">" +
         paleta.map(function (c) {
           var on = (p.colores || []).indexOf(c) >= 0;
@@ -615,6 +638,15 @@
         return true;
       });
 
+      // Galería. Las filas sin foto cargada se descartan solas.
+      var galeria = $$('[data-rep="galeria"] .rep-fila', body).map(function (f, i) {
+        return {
+          img:   String($('[data-campo="g-img"]', f).value || "").trim(),
+          alt:   String($("[data-g-alt]", f).value || "").trim() || null,
+          orden: i,
+        };
+      }).filter(function (g) { return g.img; });
+
       var colores = $$("[data-color]", body).filter(function (c) { return c.checked; })
         .map(function (c) { return c.value; });
 
@@ -675,6 +707,16 @@
         if (!colorFotos.length) return { error: null };
         return SB.from("color_fotos").insert(colorFotos.map(function (cf, i) {
           return { producto_id: id, color: cf.color, img: cf.img, orden: i };
+        }));
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        return SB.from("producto_fotos").delete().eq("producto_id", id);
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        if (!galeria.length) return { error: null };
+        return SB.from("producto_fotos").insert(galeria.map(function (g) {
+          g.producto_id = id;
+          return g;
         }));
       }).then(function (r) {
         if (r.error) throw r.error;
