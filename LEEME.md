@@ -164,8 +164,23 @@ variable no está, vuelve a las fotos locales.
 
 Para volver atrás: se borra la variable y se deploya de nuevo.
 
-Las fotos que sube el vendedor desde el panel siguen yendo a Supabase Storage
-y se muestran igual: el traductor deja pasar las URLs absolutas sin tocarlas.
+**Las fotos nuevas del panel también van a Cloudinary.** El navegador nunca ve
+el secreto: le pide una firma a `/api/firma-cloudinary`, una función de Vercel
+que antes verifica contra Supabase que quien sube sea un administrador de la
+tabla `admins`. Para eso alcanza con la misma variable:
+
+| Variable | Valor |
+|---|---|
+| `CLOUDINARY_URL` | `cloudinary://<key>:<secret>@<cloud>` |
+
+Esa variable sirve para las dos cosas: el build saca de ahí el cloud name para
+el navegador (y **sólo** el cloud name), y la función usa la clave y el secreto
+del lado del servidor. Si activás la integración de Cloudinary en Vercel, queda
+puesta sola.
+
+Si la función no está disponible (probando en tu computadora, o si todavía no
+cargaste la variable), el panel sube a Supabase Storage como antes y avisa por
+consola. Nunca te quedás sin poder subir fotos.
 
 ### 6. Cargar el catálogo inicial
 

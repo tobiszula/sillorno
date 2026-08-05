@@ -157,15 +157,72 @@
     });
   }
 
+  /* Las fotos nuevas van a Cloudinary. El navegador nunca ve el secreto: le
+     pide una firma a /api/firma-cloudinary, que antes comprueba que seamos
+     administradores de verdad.
+
+     Si ese endpoint no está (por ejemplo probando en la computadora, o si
+     todavía no cargaste las variables en Vercel), cae solo a Supabase Storage,
+     que es como venía funcionando. Nunca te quedás sin poder subir. */
+  var cloudinaryAndaba = null;   // null = no probamos todavía
+
+  function subirACloudinary(blob) {
+    return SB.auth.getSession().then(function (s) {
+      var token = s && s.data && s.data.session && s.data.session.access_token;
+      if (!token) throw new Error("sin sesión");
+
+      return fetch("/api/firma-cloudinary", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+      });
+    }).then(function (r) {
+      if (!r.ok) throw new Error("firma no disponible (" + r.status + ")");
+      return r.json();
+    }).then(function (f) {
+      var fd = new FormData();
+      fd.append("file", blob, "foto.webp");
+      fd.append("api_key", f.apiKey);
+      fd.append("timestamp", f.timestamp);
+      fd.append("folder", f.folder);
+      fd.append("signature", f.signature);
+
+      return fetch("https://api.cloudinary.com/v1_1/" + f.cloud + "/image/upload", {
+        method: "POST", body: fd,
+      });
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error((j && j.error && j.error.message) || ("HTTP " + r.status));
+        return j.secure_url;
+      });
+    });
+  }
+
+  function subirASupabase(blob, carpeta) {
+    var nombre = carpeta + "/" + Date.now().toString(36) +
+                 Math.random().toString(36).slice(2, 7) + ".webp";
+    return SB.storage.from(BUCKET).upload(nombre, blob, {
+      contentType: "image/webp", cacheControl: "2592000",
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      return SB.storage.from(BUCKET).getPublicUrl(nombre).data.publicUrl;
+    });
+  }
+
   function subirFoto(file, carpeta) {
     return achicar(file).then(function (blob) {
-      var nombre = carpeta + "/" + Date.now().toString(36) +
-                   Math.random().toString(36).slice(2, 7) + ".webp";
-      return SB.storage.from(BUCKET).upload(nombre, blob, {
-        contentType: "image/webp", cacheControl: "2592000",
-      }).then(function (r) {
-        if (r.error) throw r.error;
-        return SB.storage.from(BUCKET).getPublicUrl(nombre).data.publicUrl;
+      if (cloudinaryAndaba === false) return subirASupabase(blob, carpeta);
+
+      return subirACloudinary(blob).then(function (url) {
+        cloudinaryAndaba = true;
+        return url;
+      }).catch(function (err) {
+        // Sólo desistimos de Cloudinary si el problema es que no está montado.
+        // Un error puntual de red no tiene por qué apagarlo para toda la sesión.
+        if (/no disponible|sin sesión/.test(String(err && err.message))) {
+          cloudinaryAndaba = false;
+        }
+        console.warn("[cloudinary] " + (err && err.message) + " — subo a Supabase Storage");
+        return subirASupabase(blob, carpeta);
       });
     });
   }
