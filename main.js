@@ -1125,7 +1125,14 @@
       }
       if ((el = e.target.closest("[data-qty]"))) {
         pdState.qty = Math.max(1, Math.min(99, pdState.qty + Number(el.getAttribute("data-qty"))));
-        var out = $("[data-qty-val]"); if (out) out.textContent = pdState.qty;
+        var out = $("[data-qty-val]");
+        if (out) {
+          out.textContent = pdState.qty;
+          if (window.anime) {
+            window.anime.remove(out);
+            window.anime({ targets: out, scale: [1.35, 1], duration: 320, easing: "easeOutBack" });
+          }
+        }
         return;
       }
       if (e.target.closest("[data-add-cart]")) {

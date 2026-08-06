@@ -875,7 +875,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 .qty { display: flex; align-items: center; border: 1px solid var(--line-2); border-radius: var(--radius); }
 .qty button { width: 40px; height: 100%; display: grid; place-items: center; color: var(--cream-2); font-size: 1.1rem; }
 .qty button:hover { color: var(--cream); background: var(--bg-4); }
-.qty output { min-width: 30px; text-align: center; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.qty output { display: inline-block; min-width: 30px; text-align: center; font-size: .95rem; font-variant-numeric: tabular-nums; }
 .pd-actions-row .btn-primary { flex: 1; }
 
 /* =====================================================  11. CARRITO  */
