@@ -784,8 +784,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   text-transform: uppercase; color: var(--cream-2); margin-bottom: .5rem;
 }
 .pd-colors .swatch { width: 36px; height: 36px; }
-.pd-colors .dots i { width: 15px; height: 15px; }
-.pd-colors .card-spec { margin-top: .5rem; color: var(--cream-2); }
 
 .pd-body { padding: 1.2rem var(--pad) 1.6rem; display: flex; flex-direction: column; gap: 1rem; }
 .pd-cat { font-size: .64rem; letter-spacing: .18em; text-transform: uppercase; color: var(--cream-3); }
@@ -1024,8 +1022,6 @@ body.is-locked { overflow: hidden; }
   .pd-media { aspect-ratio: auto; height: 100%; max-height: none; min-height: 480px; }
   .pd-body { padding: 1.8rem 1.9rem 2rem; }
   .pd-actions { background: var(--bg-2); }
-  /* En desktop el precio ya se ve arriba sin scroll: no hace falta repetirlo. */
-  .pd-actions-price { display: none; }
 
   .drawer-panel { max-width: 440px; }
 }

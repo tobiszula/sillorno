@@ -147,7 +147,7 @@
   function cartKey(it) {
     return it.tipo === "combo"
       ? "combo|" + it.cid
-      : "p|" + it.pid + "|" + it.medida + "|" + (it.estampado || "");
+      : "p|" + it.pid + "|" + it.medida + "|" + (it.estampado || "") + "|" + (it.color || "");
   }
 
   function cartPush(item) {
@@ -157,9 +157,9 @@
     else cart.push(item);
     cartSave(); renderCart();
   }
-  function cartAdd(pid, medida, estampado, qty) {
+  function cartAdd(pid, medida, estampado, color, qty) {
     cartPush({ tipo: "producto", pid: pid, medida: medida,
-               estampado: estampado || null, qty: qty || 1 });
+               estampado: estampado || null, color: color || null, qty: qty || 1 });
   }
   function cartAddCombo(cid, qty) {
     cartPush({ tipo: "combo", cid: cid, qty: qty || 1 });
@@ -608,31 +608,22 @@
     // Lista de colores = los del producto + cualquiera que tenga foto propia.
     var colorList = (p.colores || []).slice();
     Object.keys(fotosColor).forEach(function (c) { if (colorList.indexOf(c) < 0) colorList.push(c); });
-    var hayFotosColor = Object.keys(fotosColor).length > 0;
 
     // El selector de color va superpuesto sobre el borde inferior de la foto,
     // no en el cuerpo de texto: casi todos los productos tienen varios
-    // colores y merece estar a la vista sin scrollear.
+    // colores y merece estar a la vista sin scrollear. Siempre se puede
+    // tocar y elegir, tenga o no foto propia — el color elegido se manda
+    // igual en el pedido; si hay foto, además cambia la imagen de arriba.
     var colores = "";
     if (colorList.length) {
-      if (hayFotosColor) {
-        // Swatches clickeables: al tocar uno con foto, cambia la imagen de arriba.
-        colores = '<div class="pd-colors"><h4>Color' +
-          (pdState.color ? " · " + esc(pdState.color) : " · tocá para ver") + "</h4>" +
-          '<div class="swatches">' + colorList.map(function (c) {
-            return '<button type="button" class="swatch' +
-              (pdState.color === c ? " is-active" : "") + (fotosColor[c] ? " has-foto" : "") + '" ' +
-              'data-pick-color="' + esc(c) + '" title="' + esc(c) + '" aria-label="' + esc(c) + '" ' +
-              'style="--sw:' + (COLORES[c] || "#888") + '"></button>';
-          }).join("") + "</div></div>";
-      } else {
-        colores = '<div class="pd-colors"><h4>Colores disponibles</h4><div class="dots">' +
-          colorList.map(function (c) {
-            return '<i style="background:' + (COLORES[c] || "#888") + '" title="' + esc(c) + '"></i>';
-          }).join("") + "</div>" +
-          '<p class="card-spec">' + esc(colorList.join(" · ")) +
-          ". Nos decís cuál querés al cerrar el pedido por WhatsApp.</p></div>";
-      }
+      colores = '<div class="pd-colors"><h4>Color' +
+        (pdState.color ? " · " + esc(pdState.color) : " · tocá para elegir") + "</h4>" +
+        '<div class="swatches">' + colorList.map(function (c) {
+          return '<button type="button" class="swatch' +
+            (pdState.color === c ? " is-active" : "") + (fotosColor[c] ? " has-foto" : "") + '" ' +
+            'data-pick-color="' + esc(c) + '" title="' + esc(c) + '" aria-label="' + esc(c) + '" ' +
+            'style="--sw:' + (COLORES[c] || "#888") + '"></button>';
+        }).join("") + "</div></div>";
     }
 
     // Puntitos de la galería: deslizá el dedo sobre la foto para cambiarla,
@@ -683,11 +674,27 @@
       "</div></div>";
   }
 
+  // El precio de la barra fija de abajo sólo se muestra cuando el precio de
+  // arriba ya no está a la vista (scrolleado) — así no se ve duplicado.
+  var pdPriceObs = null;
+  function watchPdPrice() {
+    var priceEl = $(".pd-price");
+    var stickyEl = $(".pd-actions-price");
+    if (pdPriceObs) pdPriceObs.disconnect();
+    if (!priceEl || !stickyEl) return;
+    stickyEl.hidden = true;
+    pdPriceObs = new IntersectionObserver(function (entries) {
+      stickyEl.hidden = entries[0].isIntersecting;
+    }, { root: $("[data-product-panel]"), threshold: 0 });
+    pdPriceObs.observe(priceEl);
+  }
+
   function renderProduct() {
     var p = byId(pdState.pid); if (!p) return;
     var panel = $("[data-product-panel]");
     panel.innerHTML = productHTML(p);
     panel.scrollTop = 0;
+    watchPdPrice();
   }
 
   // Deslizar el dedo sobre la foto pasa a la siguiente/anterior de la galería
@@ -775,9 +782,10 @@
             var p = byId(it.pid); if (!p) return "";
             var v = variante(p, it.medida); if (!v) return "";
             var est = (p.estampados || []).filter(function (e) { return e.slug === it.estampado; })[0];
-            img = est ? est.img : p.img;
+            var fc = p.fotosColor || {};
+            img = est ? est.img : (it.color && fc[it.color]) ? fc[it.color] : p.img;
             nombre = p.nombre;
-            detalle = it.medida + (est ? " · " + est.nombre : "");
+            detalle = it.medida + (est ? " · " + est.nombre : "") + (it.color ? " · " + it.color : "");
           }
           var k = cartKey(it);
           return '<div class="citem">' +
@@ -849,6 +857,7 @@
       var est = (p.estampados || []).filter(function (e) { return e.slug === it.estampado; })[0];
       return "• " + p.nombre + " — " + it.medida +
              (est ? " · " + est.nombre : "") +
+             (it.color ? " · Color: " + it.color : "") +
              " ×" + it.qty + " — " + money(v.precio * it.qty);
     }).filter(Boolean).join("\n");
 
@@ -1041,7 +1050,7 @@
         $$("[data-pick-color]").forEach(function (b) {
           b.classList.toggle("is-active", b.getAttribute("data-pick-color") === pdState.color);
         });
-        var blk = el.closest(".pd-block"); var h4 = blk && blk.querySelector("h4");
+        var blk = el.closest(".pd-colors"); var h4 = blk && blk.querySelector("h4");
         if (h4) h4.textContent = "Color" + (pdState.color ? " · " + pickC : " · tocá para ver");
         return;
       }
@@ -1052,7 +1061,7 @@
       }
       if (e.target.closest("[data-add-cart]")) {
         var prod = byId(pdState.pid); if (!prod) return;
-        cartAdd(pdState.pid, pdState.medida, pdState.estampado, pdState.qty);
+        cartAdd(pdState.pid, pdState.medida, pdState.estampado, pdState.color, pdState.qty);
         closeDialog($("[data-product-dialog]"));
         toast(prod.nombre + " agregado al pedido");
         return;
