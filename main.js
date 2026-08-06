@@ -564,13 +564,13 @@
     return p.img;
   }
 
-  // Marca cuál miniatura está activa según la foto que se ve arriba.
+  // Actualiza el contador "2 / 4" según la foto que quedó arriba.
   function syncGaleria() {
     var p = byId(pdState.pid); if (!p) return;
-    var actual = currentPdImage(p);
-    $$("[data-pick-foto]").forEach(function (b) {
-      b.classList.toggle("is-active", b.getAttribute("data-pick-foto") === actual);
-    });
+    var contador = $(".pd-count"); if (!contador) return;
+    var fotos = galeria(p);
+    var idx = fotos.indexOf(currentPdImage(p)); if (idx < 0) idx = 0;
+    contador.textContent = (idx + 1) + " / " + fotos.length;
   }
 
   // Cambia sólo la foto de arriba (sin redibujar toda la ficha), con un fundido.
@@ -640,16 +640,18 @@
         }).join("") + "</div></div>";
     }
 
-    // Puntitos de la galería: deslizá el dedo sobre la foto para cambiarla,
-    // o tocá un punto puntual. Sólo si hay más de una foto para mirar.
+    // Flechitas + contador: deslizá el dedo sobre la foto para cambiarla, o
+    // tocá una flecha. Sólo si hay más de una foto para mirar.
     var fotos = galeria(p);
-    var dots = "";
+    var arrows = "", contador = "";
     if (fotos.length > 1) {
-      dots = '<div class="pd-dots" role="group" aria-label="Fotos de ' + esc(p.nombre) + '">' +
-        fotos.map(function (src, i) {
-          return '<button type="button" class="pd-dot' + (src === img ? " is-active" : "") + '" ' +
-            'data-pick-foto="' + esc(src) + '" aria-label="Ver foto ' + (i + 1) + " de " + fotos.length + '"></button>';
-        }).join("") + "</div>";
+      var idxFoto = fotos.indexOf(img); if (idxFoto < 0) idxFoto = 0;
+      arrows =
+        '<button type="button" class="pd-arrow pd-arrow-prev" data-photo-nav="-1" aria-label="Foto anterior">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>' +
+        '<button type="button" class="pd-arrow pd-arrow-next" data-photo-nav="1" aria-label="Foto siguiente">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>';
+      contador = '<span class="pd-count" aria-hidden="true">' + (idxFoto + 1) + " / " + fotos.length + "</span>";
     }
 
     var stockClass = v.stock === "ultimas" ? " is-ultimas" : (agotado ? " is-agotado" : "");
@@ -660,7 +662,8 @@
       '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '<div class="pd-media" data-pd-swipe><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
-        '<div class="pd-overlay">' + dots + colores + "</div></div>" +
+        arrows + contador +
+        '<div class="pd-overlay">' + colores + "</div></div>" +
       '<div class="pd-body">' +
         '<div><p class="pd-cat">' + esc(p._cat) + '</p>' +
         '<h2 class="pd-name">' + esc(p.nombre) + "</h2></div>" +
@@ -752,7 +755,7 @@
     var startX = null, startY = null;
     document.addEventListener("pointerdown", function (e) {
       if (!e.target.closest("[data-pd-swipe]")) return;
-      if (e.target.closest("[data-pick-foto],.swatch")) return;
+      if (e.target.closest(".pd-arrow,.swatch")) return;
       startX = e.clientX; startY = e.clientY;
     });
     document.addEventListener("pointerup", function (e) {
@@ -1117,10 +1120,9 @@
       }
       if (e.target.closest("[data-close-product]")) { closeDialog($("[data-product-dialog]")); return; }
 
-      // Galería: tocar una miniatura cambia la foto grande.
-      if ((el = e.target.closest("[data-pick-foto]"))) {
-        pdState.foto = el.getAttribute("data-pick-foto");
-        updatePdImage();
+      // Galería: la flechita pasa a la foto siguiente/anterior.
+      if ((el = e.target.closest("[data-photo-nav]"))) {
+        swipeFoto(Number(el.getAttribute("data-photo-nav")));
         return;
       }
 
