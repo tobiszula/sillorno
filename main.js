@@ -778,6 +778,36 @@
     openDialog($("[data-product-dialog]"));
   }
 
+  /* ======================================================  BOTÓN ATRÁS  ==
+     Para que la flecha de atrás del celular cierre lo que esté abierto
+     (ficha de producto, carrito, filtros, menú) en vez de sacar al
+     visitante de la web: cada panel que se abre mete una entrada de
+     historial de más; al cerrarlo con la UI (no con atrás) se consume esa
+     entrada con history.back(); al tocar atrás de verdad, popstate cierra
+     lo último que quedó abierto en vez de dejar que el navegador navegue. */
+  var overlayStack = [];
+  var overlayProgrammaticPop = false;
+
+  function pushOverlay(onBack) {
+    history.pushState({ sillornoOverlay: overlayStack.length + 1 }, "", location.href);
+    overlayStack.push(onBack);
+  }
+  // Se llama al cerrar un panel desde la propia UI (botón X, backdrop, etc.)
+  // — no cuando el cierre ya vino disparado por el botón atrás.
+  function popOverlay(onBack) {
+    var idx = overlayStack.lastIndexOf(onBack);
+    if (idx === -1) return;
+    overlayStack.splice(idx, 1);
+    overlayProgrammaticPop = true;
+    history.back();
+  }
+  window.addEventListener("popstate", function () {
+    if (overlayProgrammaticPop) { overlayProgrammaticPop = false; return; }
+    if (!overlayStack.length) return;
+    var fn = overlayStack.pop();
+    fn();
+  });
+
   /* ==========================================================  DIÁLOGOS  */
   var lastFocus = null;
 
@@ -787,9 +817,12 @@
     dlg.showModal();
     document.body.classList.add("is-locked");
     requestAnimationFrame(function () { dlg.classList.add("is-open"); });
+    var onBack = function () { closeDialog(dlg, true); };
+    dlg._overlayCloser = onBack;
+    pushOverlay(onBack);
   }
 
-  function closeDialog(dlg) {
+  function closeDialog(dlg, fromBack) {
     if (!dlg || !dlg.open) return;
     dlg.classList.remove("is-open");
     setTimeout(function () {
@@ -797,6 +830,10 @@
       if (!$$("dialog[open]").length) document.body.classList.remove("is-locked");
       if (lastFocus && lastFocus.focus) lastFocus.focus();
     }, 260);
+    if (!fromBack && dlg._overlayCloser) {
+      popOverlay(dlg._overlayCloser);
+      dlg._overlayCloser = null;
+    }
   }
 
   /* ==========================================================  CARRITO UI */
@@ -918,16 +955,24 @@
     var burger = $("[data-open-nav]");
     var sheet = $("[data-navsheet]");
     if (burger && sheet) {
-      burger.addEventListener("click", function () {
-        var open = sheet.classList.toggle("is-open");
+      var navCloser = null;
+      var setNavOpen = function (open, fromBack) {
         sheet.hidden = false;
+        sheet.classList.toggle("is-open", open);
         burger.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) {
+          navCloser = function () { setNavOpen(false, true); };
+          pushOverlay(navCloser);
+        } else if (navCloser) {
+          if (!fromBack) popOverlay(navCloser);
+          navCloser = null;
+        }
+      };
+      burger.addEventListener("click", function () {
+        setNavOpen(!sheet.classList.contains("is-open"));
       });
       sheet.addEventListener("click", function (e) {
-        if (e.target.closest("a")) {
-          sheet.classList.remove("is-open");
-          burger.setAttribute("aria-expanded", "false");
-        }
+        if (e.target.closest("a")) setNavOpen(false);
       });
     }
   }
@@ -940,7 +985,8 @@
       "opacity:0;pointer-events:none;transition:opacity .35s var(--ease-out)";
     document.body.appendChild(backdrop);
 
-    function abrir(open) {
+    var closer = null;
+    function abrir(open, fromBack) {
       if (!panel) return;
       panel.classList.toggle("is-open", open);
       backdrop.style.opacity = open ? "1" : "0";
@@ -948,6 +994,13 @@
       document.body.classList.toggle("is-locked", open);
       var btn = $("[data-open-filters]");
       if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) {
+        closer = function () { abrir(false, true); };
+        pushOverlay(closer);
+      } else if (closer) {
+        if (!fromBack) popOverlay(closer);
+        closer = null;
+      }
     }
 
     document.addEventListener("click", function (e) {
