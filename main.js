@@ -209,6 +209,14 @@
       '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>' +
       '<rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>' +
       '</svg><span class="cat-banner-txt"><span class="cat-banner-name">Ver todo</span></span></button>');
+    // Sets armados: no es una categoría de producto, así que en vez de filtrar
+    // el catálogo lleva directo a la sección de combos.
+    if (COMBOS.length) {
+      tiles.push('<a class="cat-banner" href="#combos" aria-label="Ver sets armados">' +
+        '<img src="' + esc(foto(COMBOS[0].img, 720)) + '" alt="" loading="lazy" decoding="async">' +
+        '<span class="cat-banner-txt"><span class="cat-banner-name">Sets</span>' +
+        '<span class="cat-banner-sub">Combos con descuento</span></span></a>');
+    }
     box.innerHTML = tiles.join("");
   }
 
@@ -597,12 +605,18 @@
       patterns = '<div class="pd-block"><h4>' +
         (p.id === "manta-outlet" ? "Diseño" : "Estampado") +
         " · " + esc(est ? est.nombre : "elegí uno") + "</h4>" +
-        '<div class="pattern-grid">' + p.estampados.map(function (e) {
-          return '<button class="pattern' + (e.slug === pdState.estampado ? " is-active" : "") +
-            '" type="button" data-pick-est="' + esc(e.slug) + '" aria-label="' + esc(e.nombre) + '">' +
-            '<img src="' + esc(foto(e.img, 200)) + '" alt="' + esc(e.nombre) + '" loading="lazy">' +
-            "<span>" + esc(e.nombre) + "</span></button>";
-        }).join("") + "</div></div>";
+        '<div class="pattern-scroll">' +
+          '<div class="pattern-grid">' + p.estampados.map(function (e) {
+            return '<button class="pattern' + (e.slug === pdState.estampado ? " is-active" : "") +
+              '" type="button" data-pick-est="' + esc(e.slug) + '" aria-label="' + esc(e.nombre) + '">' +
+              '<img src="' + esc(foto(e.img, 200)) + '" alt="' + esc(e.nombre) + '" loading="lazy">' +
+              "<span>" + esc(e.nombre) + "</span></button>";
+          }).join("") + "</div>" +
+          // En celu la fila se desliza; esta flechita avisa que hay más
+          // estampados para ver y se esconde sola al llegar al final.
+          '<span class="pattern-hint" aria-hidden="true">' +
+            '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>' +
+        "</div></div>";
     }
 
     // Lista de colores = los del producto + cualquiera que tenga foto propia.
@@ -676,17 +690,40 @@
 
   // El precio de la barra fija de abajo sólo se muestra cuando el precio de
   // arriba ya no está a la vista (scrolleado) — así no se ve duplicado.
-  var pdPriceObs = null;
+  // [data-product-panel] es siempre el mismo elemento entre renders (sólo
+  // se le reemplaza el innerHTML), así que hay que sacar el listener viejo
+  // antes de poner uno nuevo o se van acumulando.
+  var pdPriceHandler = null, pdPriceRoot = null;
   function watchPdPrice() {
     var priceEl = $(".pd-price");
     var stickyEl = $(".pd-actions-price");
-    if (pdPriceObs) pdPriceObs.disconnect();
-    if (!priceEl || !stickyEl) return;
-    stickyEl.hidden = true;
-    pdPriceObs = new IntersectionObserver(function (entries) {
-      stickyEl.hidden = entries[0].isIntersecting;
-    }, { root: $("[data-product-panel]"), threshold: 0 });
-    pdPriceObs.observe(priceEl);
+    var root = $("[data-product-panel]");
+    if (pdPriceHandler && pdPriceRoot) pdPriceRoot.removeEventListener("scroll", pdPriceHandler);
+    if (!priceEl || !stickyEl || !root) return;
+    pdPriceHandler = function () {
+      var pr = priceEl.getBoundingClientRect(), rr = root.getBoundingClientRect();
+      stickyEl.hidden = pr.bottom > rr.top && pr.top < rr.bottom;
+    };
+    pdPriceRoot = root;
+    root.addEventListener("scroll", pdPriceHandler, { passive: true });
+    pdPriceHandler();
+  }
+
+  // La flechita de la fila de estampados se esconde cuando llegaste al
+  // final del scroll horizontal. .pattern-grid es un elemento nuevo en
+  // cada render, así que el listener viejo se descarta solo.
+  function watchPatternHint() {
+    var grid = $(".pattern-grid");
+    var hint = $(".pattern-hint");
+    if (!grid || !hint) return;
+    var update = function () {
+      var max = grid.scrollWidth - grid.clientWidth;
+      hint.hidden = max <= 2 || grid.scrollLeft >= max - 2;
+    };
+    grid.addEventListener("scroll", update, { passive: true });
+    // rAF para el chequeo inicial: recién insertado el HTML, el navegador
+    // puede no haber terminado de acomodar el layout todavía.
+    requestAnimationFrame(update);
   }
 
   function renderProduct() {
@@ -695,6 +732,7 @@
     panel.innerHTML = productHTML(p);
     panel.scrollTop = 0;
     watchPdPrice();
+    watchPatternHint();
   }
 
   // Deslizar el dedo sobre la foto pasa a la siguiente/anterior de la galería
