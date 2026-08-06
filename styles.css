@@ -214,8 +214,20 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 /* Indicador de stock */
 .stock { display: inline-flex; align-items: center; gap: .4rem; font-size: .74rem; color: var(--cream-3); }
 .stock::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
-.stock.is-ultimas::before { background: var(--warn); }
 .stock.is-agotado::before { background: var(--cream-3); }
+
+/* Últimas unidades: se destaca como etiqueta para meter urgencia de compra */
+.stock.is-ultimas {
+  padding: .22rem .55rem;
+  border-radius: 2px;
+  background: var(--wine);
+  color: var(--cream);
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  font-size: .66rem;
+}
+.stock.is-ultimas::before { display: none; }
 
 /* ============================================================  6. HEADER */
 .header {
