@@ -586,6 +586,7 @@
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '<div class="pd-media"><img src="' + esc(img) + '" alt="' + esc(p.nombre) + '" data-pd-img></div>' +
       '<div class="pd-body">' +
+        colores +
         '<div><p class="pd-cat">' + esc(p._cat) + '</p>' +
         '<h2 class="pd-name">' + esc(p.nombre) + "</h2></div>" +
         '<p class="pd-desc">' + esc(p.descripcion) + "</p>" +
@@ -593,7 +594,7 @@
           '<small class="stock' + stockClass + '">' + stockText + "</small></div>" +
         (p.incluye ? '<p class="card-spec">Incluye: ' + esc(p.incluye) + "</p>" : "") +
         '<div class="pd-block"><h4>Medida</h4><div class="opts">' + opciones + "</div></div>" +
-        patterns + colores +
+        patterns +
         '<div class="pd-block"><h4>Ficha técnica</h4><div class="specs">' +
           (p.specs || []).map(function (s) { return '<span class="tag">' + esc(s) + "</span>"; }).join("") +
         "</div></div>" +
