@@ -97,7 +97,7 @@
   function cargarTodo() {
     return Promise.all([
       SB.from("categorias").select("*"),
-      SB.from("productos").select("*, variantes(*), estampados(*), color_fotos(*)"),
+      SB.from("productos").select("*, variantes(*), estampados(*), color_fotos(*), producto_fotos(*)"),
       SB.from("combos").select("*, combo_items(*)"),
     ]).then(function (res) {
       res.forEach(function (r) { if (r.error) throw r.error; });
@@ -108,6 +108,7 @@
         p.variantes    = (p.variantes    || []).sort(porOrden);
         p.estampados   = (p.estampados   || []).sort(porOrden);
         p.color_fotos  = (p.color_fotos  || []).sort(porOrden);
+        p.producto_fotos = (p.producto_fotos || []).sort(porOrden);
       });
       SETS.forEach(function (s) {
         s.combo_items = (s.combo_items || []).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0); });
@@ -153,15 +154,72 @@
     });
   }
 
+  /* Las fotos nuevas van a Cloudinary. El navegador nunca ve el secreto: le
+     pide una firma a /api/firma-cloudinary, que antes comprueba que seamos
+     administradores de verdad.
+
+     Si ese endpoint no está (por ejemplo probando en la computadora, o si
+     todavía no cargaste las variables en Vercel), cae solo a Supabase Storage,
+     que es como venía funcionando. Nunca te quedás sin poder subir. */
+  var cloudinaryAndaba = null;   // null = no probamos todavía
+
+  function subirACloudinary(blob) {
+    return SB.auth.getSession().then(function (s) {
+      var token = s && s.data && s.data.session && s.data.session.access_token;
+      if (!token) throw new Error("sin sesión");
+
+      return fetch("/api/firma-cloudinary", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+      });
+    }).then(function (r) {
+      if (!r.ok) throw new Error("firma no disponible (" + r.status + ")");
+      return r.json();
+    }).then(function (f) {
+      var fd = new FormData();
+      fd.append("file", blob, "foto.webp");
+      fd.append("api_key", f.apiKey);
+      fd.append("timestamp", f.timestamp);
+      fd.append("folder", f.folder);
+      fd.append("signature", f.signature);
+
+      return fetch("https://api.cloudinary.com/v1_1/" + f.cloud + "/image/upload", {
+        method: "POST", body: fd,
+      });
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error((j && j.error && j.error.message) || ("HTTP " + r.status));
+        return j.secure_url;
+      });
+    });
+  }
+
+  function subirASupabase(blob, carpeta) {
+    var nombre = carpeta + "/" + Date.now().toString(36) +
+                 Math.random().toString(36).slice(2, 7) + ".webp";
+    return SB.storage.from(BUCKET).upload(nombre, blob, {
+      contentType: "image/webp", cacheControl: "2592000",
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      return SB.storage.from(BUCKET).getPublicUrl(nombre).data.publicUrl;
+    });
+  }
+
   function subirFoto(file, carpeta) {
     return achicar(file).then(function (blob) {
-      var nombre = carpeta + "/" + Date.now().toString(36) +
-                   Math.random().toString(36).slice(2, 7) + ".webp";
-      return SB.storage.from(BUCKET).upload(nombre, blob, {
-        contentType: "image/webp", cacheControl: "2592000",
-      }).then(function (r) {
-        if (r.error) throw r.error;
-        return SB.storage.from(BUCKET).getPublicUrl(nombre).data.publicUrl;
+      if (cloudinaryAndaba === false) return subirASupabase(blob, carpeta);
+
+      return subirACloudinary(blob).then(function (url) {
+        cloudinaryAndaba = true;
+        return url;
+      }).catch(function (err) {
+        // Sólo desistimos de Cloudinary si el problema es que no está montado.
+        // Un error puntual de red no tiene por qué apagarlo para toda la sesión.
+        if (/no disponible|sin sesión/.test(String(err && err.message))) {
+          cloudinaryAndaba = false;
+        }
+        console.warn("[cloudinary] " + (err && err.message) + " — subo a Supabase Storage");
+        return subirASupabase(blob, carpeta);
       });
     });
   }
@@ -292,6 +350,7 @@
     if (tipo === "variantes")  lista.insertAdjacentHTML("beforeend", filaVarianteHTML({}));
     if (tipo === "estampados") lista.insertAdjacentHTML("beforeend", filaEstampadoHTML({}));
     if (tipo === "items")      lista.insertAdjacentHTML("beforeend", filaItemHTML({}));
+    if (tipo === "galeria")    lista.insertAdjacentHTML("beforeend", filaGaleriaHTML({}));
   });
 
   // Al cambiar el producto de un item de set, se recargan sus medidas
@@ -322,6 +381,17 @@
     return '<div class="rep-fila rep-3" data-fila>' +
       '<input type="text" data-e-nombre placeholder="Nombre del estampado" value="' + esc(es.nombre || "") + '">' +
       fotoHTML(es.img, "e-img", true) +
+      '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
+    "</div>";
+  }
+
+  // Una foto más de la galería: la miniatura y un texto opcional para
+  // accesibilidad ("toallón colgado", "detalle del puño"...).
+  function filaGaleriaHTML(f) {
+    return '<div class="rep-fila rep-3" data-fila>' +
+      '<input type="text" data-g-alt placeholder="Qué se ve (opcional)" value="' +
+        esc(f.alt || "") + '">' +
+      fotoHTML(f.img, "g-img", true) +
       '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
     "</div>";
   }
@@ -554,6 +624,16 @@
 
       "<fieldset><legend>Foto principal</legend>" + fotoHTML(p.img, "img") + "</fieldset>" +
 
+      "<fieldset><legend>Más fotos <span class=\"hint\">" +
+        "(la galería de la ficha: se muestran como miniaturas abajo de la foto grande)" +
+        "</span></legend>" +
+        '<div class="rep" data-rep="galeria">' +
+          (p.producto_fotos || []).map(filaGaleriaHTML).join("") +
+        "</div>" +
+        '<button type="button" class="btn btn-sm" data-rep-add="galeria">+ Agregar foto</button>' +
+        '<p class="hint">Se ordenan como están acá. La foto principal siempre va primera.</p>' +
+      "</fieldset>" +
+
       "<fieldset><legend>Colores</legend><div class=\"colores\">" +
         paleta.map(function (c) {
           var on = (p.colores || []).indexOf(c) >= 0;
@@ -620,6 +700,15 @@
         return true;
       });
 
+      // Galería. Las filas sin foto cargada se descartan solas.
+      var galeria = $$('[data-rep="galeria"] .rep-fila', body).map(function (f, i) {
+        return {
+          img:   String($('[data-campo="g-img"]', f).value || "").trim(),
+          alt:   String($("[data-g-alt]", f).value || "").trim() || null,
+          orden: i,
+        };
+      }).filter(function (g) { return g.img; });
+
       var colores = $$("[data-color]", body).filter(function (c) { return c.checked; })
         .map(function (c) { return c.value; });
 
@@ -679,6 +768,16 @@
         if (!colorFotos.length) return { error: null };
         return SB.from("color_fotos").insert(colorFotos.map(function (cf, i) {
           return { producto_id: id, color: cf.color, img: cf.img, orden: i };
+        }));
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        return SB.from("producto_fotos").delete().eq("producto_id", id);
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        if (!galeria.length) return { error: null };
+        return SB.from("producto_fotos").insert(galeria.map(function (g) {
+          g.producto_id = id;
+          return g;
         }));
       }).then(function (r) {
         if (r.error) throw r.error;
