@@ -610,11 +610,14 @@
     Object.keys(fotosColor).forEach(function (c) { if (colorList.indexOf(c) < 0) colorList.push(c); });
     var hayFotosColor = Object.keys(fotosColor).length > 0;
 
+    // El selector de color va superpuesto sobre el borde inferior de la foto,
+    // no en el cuerpo de texto: casi todos los productos tienen varios
+    // colores y merece estar a la vista sin scrollear.
     var colores = "";
     if (colorList.length) {
       if (hayFotosColor) {
         // Swatches clickeables: al tocar uno con foto, cambia la imagen de arriba.
-        colores = '<div class="pd-block"><h4>Color' +
+        colores = '<div class="pd-colors"><h4>Color' +
           (pdState.color ? " · " + esc(pdState.color) : " · tocá para ver") + "</h4>" +
           '<div class="swatches">' + colorList.map(function (c) {
             return '<button type="button" class="swatch' +
@@ -623,24 +626,24 @@
               'style="--sw:' + (COLORES[c] || "#888") + '"></button>';
           }).join("") + "</div></div>";
       } else {
-        colores = '<div class="pd-block"><h4>Colores disponibles</h4><div class="dots">' +
+        colores = '<div class="pd-colors"><h4>Colores disponibles</h4><div class="dots">' +
           colorList.map(function (c) {
             return '<i style="background:' + (COLORES[c] || "#888") + '" title="' + esc(c) + '"></i>';
           }).join("") + "</div>" +
-          '<p class="card-spec" style="margin-top:.5rem">' + esc(colorList.join(" · ")) +
+          '<p class="card-spec">' + esc(colorList.join(" · ")) +
           ". Nos decís cuál querés al cerrar el pedido por WhatsApp.</p></div>";
       }
     }
 
-    // Tira de miniaturas: sólo si hay más de una foto para mirar.
+    // Puntitos de la galería: deslizá el dedo sobre la foto para cambiarla,
+    // o tocá un punto puntual. Sólo si hay más de una foto para mirar.
     var fotos = galeria(p);
-    var thumbs = "";
+    var dots = "";
     if (fotos.length > 1) {
-      thumbs = '<div class="pd-thumbs" role="group" aria-label="Fotos de ' + esc(p.nombre) + '">' +
+      dots = '<div class="pd-dots" role="group" aria-label="Fotos de ' + esc(p.nombre) + '">' +
         fotos.map(function (src, i) {
-          return '<button type="button" class="pd-thumb' + (src === img ? " is-active" : "") + '" ' +
-            'data-pick-foto="' + esc(src) + '" aria-label="Ver foto ' + (i + 1) + " de " + fotos.length + '">' +
-            '<img src="' + esc(foto(src, 160)) + '" alt="" loading="lazy" decoding="async"></button>';
+          return '<button type="button" class="pd-dot' + (src === img ? " is-active" : "") + '" ' +
+            'data-pick-foto="' + esc(src) + '" aria-label="Ver foto ' + (i + 1) + " de " + fotos.length + '"></button>';
         }).join("") + "</div>";
     }
 
@@ -651,10 +654,9 @@
     return '<div class="pd">' +
       '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-      '<div class="pd-media"><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
-        thumbs + "</div>" +
+      '<div class="pd-media" data-pd-swipe><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
+        '<div class="pd-overlay">' + dots + colores + "</div></div>" +
       '<div class="pd-body">' +
-        colores +
         '<div><p class="pd-cat">' + esc(p._cat) + '</p>' +
         '<h2 class="pd-name">' + esc(p.nombre) + "</h2></div>" +
         '<p class="pd-desc">' + esc(p.descripcion) + "</p>" +
@@ -667,13 +669,16 @@
           (p.specs || []).map(function (s) { return '<span class="tag">' + esc(s) + "</span>"; }).join("") +
         "</div></div>" +
         '<div class="pd-actions">' +
-          '<div class="qty">' +
+          '<div class="pd-actions-price"><strong>' + money(v.precio) + "</strong>" +
+            '<small class="stock' + stockClass + '">' + stockText + "</small></div>" +
+          '<div class="pd-actions-row"><div class="qty">' +
             '<button type="button" data-qty="-1" aria-label="Quitar uno">&minus;</button>' +
             '<output data-qty-val aria-live="polite">' + pdState.qty + "</output>" +
             '<button type="button" data-qty="1" aria-label="Sumar uno">+</button>' +
           "</div>" +
           '<button class="btn btn-primary" type="button" data-add-cart' + (agotado ? " disabled" : "") + ">" +
             (agotado ? "Sin stock" : "Agregar al pedido") + "</button>" +
+          "</div>" +
         "</div>" +
       "</div></div>";
   }
@@ -684,6 +689,34 @@
     panel.innerHTML = productHTML(p);
     panel.scrollTop = 0;
   }
+
+  // Deslizar el dedo sobre la foto pasa a la siguiente/anterior de la galería
+  // general del producto (no toca color/medida/estampado elegidos).
+  function swipeFoto(delta) {
+    var p = byId(pdState.pid); if (!p) return;
+    var fotos = galeria(p); if (fotos.length < 2) return;
+    var idx = fotos.indexOf(currentPdImage(p));
+    if (idx < 0) idx = 0;
+    idx = (idx + delta + fotos.length) % fotos.length;
+    pdState.foto = fotos[idx];
+    pdState.color = null;
+    updatePdImage();
+  }
+
+  (function () {
+    var startX = null, startY = null;
+    document.addEventListener("pointerdown", function (e) {
+      if (!e.target.closest("[data-pd-swipe]")) return;
+      if (e.target.closest("[data-pick-foto],.swatch")) return;
+      startX = e.clientX; startY = e.clientY;
+    });
+    document.addEventListener("pointerup", function (e) {
+      if (startX == null) return;
+      var dx = e.clientX - startX, dy = e.clientY - startY;
+      startX = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) swipeFoto(dx < 0 ? 1 : -1);
+    });
+  })();
 
   function openProduct(pid) {
     var p = byId(pid); if (!p) return;
