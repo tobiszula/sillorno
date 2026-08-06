@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
 <!-- Rutas absolutas a propósito: si se entra a /admin (sin la barra final),
      las rutas relativas se resuelven contra la raíz y no cargan nada. -->
-<link rel="stylesheet" href="/admin/admin.css?v=20260805a">
+<link rel="stylesheet" href="/admin/admin.css?v=20260805b">
 </head>
 <body>
 
@@ -76,8 +76,8 @@
     <div class="top-in">
       <p class="marca"><span class="wordmark">Sillorno</span><span class="marca-tag">Panel</span></p>
       <nav class="tabs" data-tabs>
-        <button type="button" class="tab is-on" data-tab="precios">Precios</button>
-        <button type="button" class="tab" data-tab="productos">Productos</button>
+        <button type="button" class="tab is-on" data-tab="productos">Productos</button>
+        <button type="button" class="tab" data-tab="precios">Precios</button>
         <button type="button" class="tab" data-tab="categorias">Categorías</button>
         <button type="button" class="tab" data-tab="sets">Sets</button>
       </nav>
@@ -90,8 +90,23 @@
 
   <main class="wrap">
 
+    <!-- ----------------------------------------------------- PRODUCTOS -->
+    <section class="vista" data-vista="productos">
+      <div class="vista-head">
+        <div>
+          <h2>Productos</h2>
+          <p class="hint">Alta, baja y edición de todo lo que se ve en el catálogo.</p>
+        </div>
+        <div class="vista-acc">
+          <input type="search" class="buscar" placeholder="Buscar producto…" data-buscar-productos>
+          <button type="button" class="btn btn-primary" data-nuevo-producto>+ Nuevo producto</button>
+        </div>
+      </div>
+      <div data-lista-productos></div>
+    </section>
+
     <!-- ------------------------------------------------------- PRECIOS -->
-    <section class="vista" data-vista="precios">
+    <section class="vista" data-vista="precios" hidden>
       <div class="vista-head">
         <div>
           <h2>Precios</h2>
@@ -104,21 +119,6 @@
         </div>
       </div>
       <div data-lista-precios></div>
-    </section>
-
-    <!-- ----------------------------------------------------- PRODUCTOS -->
-    <section class="vista" data-vista="productos" hidden>
-      <div class="vista-head">
-        <div>
-          <h2>Productos</h2>
-          <p class="hint">Alta, baja y edición de todo lo que se ve en el catálogo.</p>
-        </div>
-        <div class="vista-acc">
-          <input type="search" class="buscar" placeholder="Buscar producto…" data-buscar-productos>
-          <button type="button" class="btn btn-primary" data-nuevo-producto>+ Nuevo producto</button>
-        </div>
-      </div>
-      <div data-lista-productos></div>
     </section>
 
     <!-- ---------------------------------------------------- CATEGORÍAS -->
@@ -173,8 +173,8 @@
 <div class="toast" data-toast hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/lib/supabase-config.js?v=20260805a"></script>
-<script src="/lib/manifest.js?v=20260805a"></script>
-<script src="/admin/admin.js?v=20260805a"></script>
+<script src="/lib/supabase-config.js?v=20260805b"></script>
+<script src="/lib/manifest.js?v=20260805b"></script>
+<script src="/admin/admin.js?v=20260805b"></script>
 </body>
 </html>

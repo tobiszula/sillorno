@@ -340,7 +340,7 @@
   // Alta y baja de filas (medidas, estampados, items de un set)
   document.addEventListener("click", function (e) {
     var del = e.target.closest("[data-rep-del]");
-    if (del) { del.closest(".rep-fila").remove(); return; }
+    if (del) { del.closest(".rep-fila").remove(); actualizarAvisoSet(); return; }
 
     var add = e.target.closest("[data-rep-add]");
     if (!add) return;
@@ -351,14 +351,20 @@
     if (tipo === "estampados") lista.insertAdjacentHTML("beforeend", filaEstampadoHTML({}));
     if (tipo === "items")      lista.insertAdjacentHTML("beforeend", filaItemHTML({}));
     if (tipo === "galeria")    lista.insertAdjacentHTML("beforeend", filaGaleriaHTML({}));
+    actualizarAvisoSet();
   });
 
-  // Al cambiar el producto de un item de set, se recargan sus medidas
+  // Al cambiar el producto o la medida de un item de set, se recargan las
+  // medidas (si cambió el producto) y se revisa el aviso de arriba.
   document.addEventListener("change", function (e) {
     var sel = e.target.closest("[data-item-prod]");
-    if (!sel) return;
-    var fila = sel.closest(".rep-fila");
-    $("[data-item-med]", fila).innerHTML = opcionesMedida(sel.value, "");
+    if (sel) {
+      var fila = sel.closest(".rep-fila");
+      $("[data-item-med]", fila).innerHTML = opcionesMedida(sel.value, "");
+    } else if (!e.target.closest("[data-item-med]")) {
+      return;
+    }
+    actualizarAvisoSet();
   });
 
   function filaVarianteHTML(v) {
@@ -422,7 +428,7 @@
   function opcionesProducto(sel) {
     return PRODS.map(function (p) {
       return '<option value="' + esc(p.id) + '"' + (p.id === sel ? " selected" : "") + ">" +
-             esc(p.nombre) + "</option>";
+             esc(p.nombre) + (p.activo === false ? " (no visible)" : "") + "</option>";
     }).join("");
   }
 
@@ -431,8 +437,38 @@
     if (!p) return '<option value="">—</option>';
     return (p.variantes || []).map(function (v) {
       return '<option value="' + esc(v.medida) + '"' + (v.medida === sel ? " selected" : "") + ">" +
-             esc(v.medida) + "</option>";
+             esc(v.medida) + (v.stock === "agotado" ? " (sin stock)" : "") + "</option>";
     }).join("");
+  }
+
+  // Problemas de un ítem de set: producto no visible o esa medida sin stock.
+  // Se usa para el aviso del editor de sets, así no se entera recién cuando
+  // el cliente pide algo que ya no está disponible.
+  function itemProblema(it) {
+    var p = prodPorId(it.producto_id);
+    if (!p) return null;
+    var probs = [];
+    if (p.activo === false) probs.push("no visible");
+    var v = (p.variantes || []).filter(function (x) { return x.medida === it.medida; })[0];
+    if (v && v.stock === "agotado") probs.push("sin stock");
+    return probs.length ? (p.nombre + " · " + it.medida + ": " + probs.join(", ")) : null;
+  }
+
+  // Repasa las filas de items YA CARGADAS en el editor (no las guardadas) y
+  // muestra/esconde el aviso arriba de todo.
+  function actualizarAvisoSet() {
+    var box = $("[data-aviso-set]"); if (!box) return;
+    var body = $("[data-editor-body]");
+    var probs = $$('[data-rep="items"] .rep-fila', body).map(function (f) {
+      return itemProblema({
+        producto_id: $("[data-item-prod]", f).value,
+        medida: $("[data-item-med]", f).value,
+      });
+    }).filter(Boolean);
+    if (!probs.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = "<strong>Ojo: hay productos en este set que el cliente no puede comprar hoy</strong>" +
+      "<ul>" + probs.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>";
   }
 
   function filaItemHTML(it) {
@@ -941,6 +977,7 @@
     }
 
     var cuerpo =
+      '<div class="aviso" data-aviso-set hidden></div>' +
       '<div class="campos">' +
         '<label class="ancho">Nombre' +
           '<input type="text" data-campo="nombre" placeholder="Set de baño" value="' +
@@ -1005,6 +1042,8 @@
         }));
       }).then(function (r) { if (r.error) throw r.error; });
     });
+
+    actualizarAvisoSet();
   }
 
   function borrarSet(id) {
@@ -1103,7 +1142,7 @@
   }
 
   /* ============================================================== PANTALLA = */
-  var vistaActual = "precios";
+  var vistaActual = "productos";
 
   function montar() {
     vistaPrecios();
