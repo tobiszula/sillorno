@@ -3,9 +3,6 @@
    -----------------------------------------------------------------------------
    Todo lo que se edita acá va a la base de datos y aparece en la web sola,
    sin volver a publicar nada.
-
-   El stock NO se edita: no se compra desde la web, así que todas las medidas
-   quedan como "disponible".
    ========================================================================== */
 
 (function () {
@@ -306,12 +303,18 @@
   });
 
   function filaVarianteHTML(v) {
+    var st = v.stock || "disponible";
     return '<div class="rep-fila" data-fila>' +
       '<input type="text" data-v-medida placeholder="85 × 150 cm" value="' + esc(v.medida || "") + '">' +
       '<input type="text" data-v-detalle placeholder="Toallón" value="' + esc(v.detalle || "") + '">' +
       '<input type="number" step="0.01" min="0" data-v-precio placeholder="0.00" value="' +
         esc(v.precio != null ? v.precio : "") + '">' +
       '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
+      '<select data-v-stock style="grid-column:1/-1" aria-label="Stock de esta medida">' +
+        '<option value="disponible"' + (st === "disponible" ? " selected" : "") + ">Disponible</option>" +
+        '<option value="ultimas"' + (st === "ultimas" ? " selected" : "") + ">Últimas unidades</option>" +
+        '<option value="agotado"' + (st === "agotado" ? " selected" : "") + ">Sin stock</option>" +
+      "</select>" +
     "</div>";
   }
 
@@ -563,12 +566,13 @@
 
       fotosColorHTML(p, paleta) +
 
-      "<fieldset><legend>Medidas y precios</legend>" +
+      "<fieldset><legend>Medidas, precios y stock</legend>" +
         '<div class="rep" data-rep="variantes">' +
           (p.variantes || []).map(filaVarianteHTML).join("") +
         "</div>" +
         '<button type="button" class="btn btn-sm" data-rep-add="variantes">+ Agregar medida</button>' +
-        '<p class="hint">El precio se escribe sin puntos de miles: 24402.84</p>' +
+        '<p class="hint">El precio se escribe sin puntos de miles: 24402.84. ' +
+          "«Sin stock» tacha esa medida en la web y no se puede pedir.</p>" +
       "</fieldset>" +
 
       "<fieldset><legend>Estampados <span class=\"hint\">(opcional)</span></legend>" +
@@ -588,6 +592,7 @@
           medida:  String($("[data-v-medida]", f).value || "").trim(),
           detalle: String($("[data-v-detalle]", f).value || "").trim() || null,
           precio:  Number($("[data-v-precio]", f).value) || 0,
+          stock:   String($("[data-v-stock]", f).value || "disponible"),
           orden:   i,
         };
       }).filter(function (v) { return v.medida; });
@@ -654,7 +659,6 @@
         if (r.error) throw r.error;
         return SB.from("variantes").insert(variantes.map(function (v) {
           v.producto_id = id;
-          v.stock = "disponible";     // no se compra desde la web
           return v;
         }));
       }).then(function (r) {
