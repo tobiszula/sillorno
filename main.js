@@ -677,8 +677,6 @@
           (p.specs || []).map(function (s) { return '<span class="tag">' + esc(s) + "</span>"; }).join("") +
         "</div></div>" +
         '<div class="pd-actions">' +
-          '<div class="pd-actions-price"><strong>' + money(v.precio) + "</strong>" +
-            '<small class="stock' + stockClass + '">' + stockText + "</small></div>" +
           '<div class="pd-actions-row"><div class="qty">' +
             '<button type="button" data-qty="-1" aria-label="Quitar uno">&minus;</button>' +
             '<output data-qty-val aria-live="polite">' + pdState.qty + "</output>" +
@@ -689,27 +687,6 @@
           "</div>" +
         "</div>" +
       "</div></div>";
-  }
-
-  // El precio de la barra fija de abajo sólo se muestra cuando el precio de
-  // arriba ya no está a la vista (scrolleado) — así no se ve duplicado.
-  // [data-product-panel] es siempre el mismo elemento entre renders (sólo
-  // se le reemplaza el innerHTML), así que hay que sacar el listener viejo
-  // antes de poner uno nuevo o se van acumulando.
-  var pdPriceHandler = null, pdPriceRoot = null;
-  function watchPdPrice() {
-    var priceEl = $(".pd-price");
-    var stickyEl = $(".pd-actions-price");
-    var root = $("[data-product-panel]");
-    if (pdPriceHandler && pdPriceRoot) pdPriceRoot.removeEventListener("scroll", pdPriceHandler);
-    if (!priceEl || !stickyEl || !root) return;
-    pdPriceHandler = function () {
-      var pr = priceEl.getBoundingClientRect(), rr = root.getBoundingClientRect();
-      stickyEl.hidden = pr.bottom > rr.top && pr.top < rr.bottom;
-    };
-    pdPriceRoot = root;
-    root.addEventListener("scroll", pdPriceHandler, { passive: true });
-    pdPriceHandler();
   }
 
   // La flechita de la fila de estampados se esconde cuando llegaste al
@@ -734,7 +711,6 @@
     var panel = $("[data-product-panel]");
     panel.innerHTML = productHTML(p);
     panel.scrollTop = 0;
-    watchPdPrice();
     watchPatternHint();
   }
 
@@ -933,15 +909,15 @@
       var p = byId(it.pid); if (!p) return "";
       var v = variante(p, it.medida); if (!v) return "";
       var est = (p.estampados || []).filter(function (e) { return e.slug === it.estampado; })[0];
-      return "• " + p.nombre + " — " + it.medida +
+      return "• " + p.nombre + "\n  " + it.medida +
              (est ? " · " + est.nombre : "") +
              (it.color ? " · Color: " + it.color : "") +
              " ×" + it.qty + " — " + money(v.precio * it.qty);
-    }).filter(Boolean).join("\n");
+    }).filter(Boolean).join("\n\n");
 
     var texto = "¡Hola Sillorno! Quiero hacer este pedido:\n\n" + lineas +
       "\n\nTotal: " + money(cartTotal()) +
-      "\n\n————————\nMi nombre: \nLocalidad / zona de envío: ";
+      "\n\nMis datos:\nNombre: \nLocalidad / zona de envío: ";
 
     window.open(waLink(texto), "_blank", "noopener");
   }
