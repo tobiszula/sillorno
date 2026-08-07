@@ -792,6 +792,21 @@
     };
     renderProduct();
     openDialog($("[data-product-dialog]"));
+    precargarFotos(p);
+  }
+
+  // Apenas se abre la ficha, bajamos en silencio las demás fotos del
+  // producto (colores, estampados) mientras el cliente mira la principal.
+  // Así, para cuando toca un color, ya está en caché y cambia al toque.
+  function precargarFotos(p) {
+    var urls = [];
+    Object.keys(p.fotosColor || {}).forEach(function (c) { urls.push(p.fotosColor[c]); });
+    (p.estampados || []).forEach(function (e) { urls.push(e.img); });
+    (p.fotos || []).forEach(function (f) { urls.push(f.img); });
+    urls.forEach(function (u) {
+      var img = new Image();
+      img.src = foto(u, 1200);
+    });
   }
 
   /* ======================================================  BOTÓN ATRÁS  ==
