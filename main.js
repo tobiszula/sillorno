@@ -546,16 +546,8 @@
       return u.replace("/image/upload/", "/image/upload/f_auto,q_auto" +
                        (ancho ? ",w_" + ancho : "") + "/");
     }
-    // Otra URL externa (por ejemplo Supabase Storage, de fotos subidas antes
-    // de tener Cloudinary conectado): si hay Cloudinary, se la pedimos
-    // "fetch" para que la optimice igual, sin necesidad de resubirla.
-    if (/^https?:\/\//i.test(u)) {
-      return CLOUD
-        ? "https://res.cloudinary.com/" + CLOUD + "/image/fetch/f_auto,q_auto" +
-          (ancho ? ",w_" + ancho : "") + "/" + u
-        : u;
-    }
-    if (u.indexOf("data:") === 0) return u;
+    // Cualquier otra URL absoluta (Supabase Storage, por ejemplo) se deja igual.
+    if (/^(https?:)?\/\//i.test(u) || u.indexOf("data:") === 0) return u;
 
     if (!CLOUD) return u;                       // sin Cloudinary: ruta local
 
