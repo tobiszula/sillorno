@@ -730,9 +730,25 @@
   function renderProduct() {
     var p = byId(pdState.pid); if (!p) return;
     var panel = $("[data-product-panel]");
-    panel.innerHTML = productHTML(p);
-    panel.scrollTop = 0;
-    watchPatternHint();
+
+    var pintar = function () {
+      panel.innerHTML = productHTML(p);
+      panel.scrollTop = 0;
+      watchPatternHint();
+    };
+
+    // Si la foto va a cambiar, esperamos a que termine de descargarse antes
+    // de redibujar: si no, se ve un hueco vacío (el fondo de la ficha) hasta
+    // que carga, sobre todo con internet lenta o en el celular.
+    var imgActual = $("[data-pd-img]", panel);
+    var full = foto(currentPdImage(p), 1200);
+    if (imgActual && imgActual.getAttribute("src") !== full) {
+      var pre = new Image();
+      pre.onload = pre.onerror = pintar;
+      pre.src = full;
+    } else {
+      pintar();
+    }
   }
 
   // Deslizar el dedo sobre la foto pasa a la siguiente/anterior de la galería
@@ -1129,11 +1145,21 @@
 
       if ((el = e.target.closest("[data-pick-medida]"))) {
         pdState.foto = null;   // la medida manda sobre la galería
-        pdState.medida = el.getAttribute("data-pick-medida"); renderProduct(); return;
+        pdState.medida = el.getAttribute("data-pick-medida");
+        // Feedback al toque: la foto puede tardar un instante en cargar,
+        // pero el botón elegido se marca ya, así se ve que el click anduvo.
+        $$(".opt", el.closest(".pd-block")).forEach(function (b) {
+          b.classList.toggle("is-active", b === el);
+        });
+        renderProduct(); return;
       }
       if ((el = e.target.closest("[data-pick-est]"))) {
         pdState.foto = null;
-        pdState.estampado = el.getAttribute("data-pick-est"); renderProduct(); return;
+        pdState.estampado = el.getAttribute("data-pick-est");
+        $$(".pattern", el.closest(".pd-block")).forEach(function (b) {
+          b.classList.toggle("is-active", b === el);
+        });
+        renderProduct(); return;
       }
       if ((el = e.target.closest("[data-pick-color]"))) {
         var pickC = el.getAttribute("data-pick-color");
