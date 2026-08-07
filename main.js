@@ -596,12 +596,14 @@
   function updatePdImage() {
     var p = byId(pdState.pid); if (!p) return;
     var el = $("[data-pd-img]"); if (!el) return;
-    var src = currentPdImage(p);
-    if (el.getAttribute("src") === src) return;
+    // foto(): misma optimización de Cloudinary que se usa al abrir la ficha.
+    // Sin esto, cambiar de color pedía la imagen cruda tal cual está guardada.
+    var full = foto(currentPdImage(p), 1200);
+    if (el.getAttribute("src") === full) return;
     el.style.opacity = "0";
     var pre = new Image();
-    pre.onload = pre.onerror = function () { el.src = src; el.style.opacity = "1"; };
-    pre.src = src;
+    pre.onload = pre.onerror = function () { el.src = full; el.style.opacity = "1"; };
+    pre.src = full;
     syncGaleria();
   }
 
