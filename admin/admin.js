@@ -255,18 +255,25 @@
       quitar.hidden = true;
       return;
     }
+    var principal = e.target.closest("[data-usar-principal]");
+    if (principal) {
+      var filaG = principal.closest(".rep-fila");
+      var cajaG = $("[data-foto]", filaG);
+      var cajaP = $('[data-foto="img"]', $("[data-editor-body]"));
+      if (cajaG && cajaP) swapFotoBoxes(cajaP, cajaG);
+      return;
+    }
+
     var btn = e.target.closest("[data-foto-btn]");
     if (!btn) return;
     $("[data-foto-file]", btn.closest("[data-foto]")).click();
   });
 
-  document.addEventListener("change", function (e) {
-    var input = e.target.closest("[data-foto-file]");
-    if (!input || !input.files || !input.files[0]) return;
-    var caja = input.closest("[data-foto]");
+  // Sube el archivo y lo coloca en su caja de foto (botón o arrastre, mismo camino).
+  function subirYColocar(file, caja) {
     var nota = $("[data-foto-nota]", caja);
     nota.textContent = "Subiendo…";
-    subirFoto(input.files[0], "catalogo").then(function (url) {
+    subirFoto(file, "catalogo").then(function (url) {
       $("[data-campo]", caja).value = url;
       var img = $("[data-foto-prev]", caja);
       img.src = url;
@@ -279,7 +286,36 @@
       nota.textContent = "";
       toast("No se pudo subir la foto: " + detalle(err), true);
     });
+  }
+
+  document.addEventListener("change", function (e) {
+    var input = e.target.closest("[data-foto-file]");
+    if (!input || !input.files || !input.files[0]) return;
+    subirYColocar(input.files[0], input.closest("[data-foto]"));
     input.value = "";
+  });
+
+  // Arrastrar una foto directo sobre el recuadro, en vez de tener que
+  // apretar el botón y buscarla en el explorador de archivos.
+  document.addEventListener("dragover", function (e) {
+    var caja = e.target.closest("[data-foto]");
+    if (!caja) return;
+    e.preventDefault();
+    caja.classList.add("is-dragover");
+  });
+  document.addEventListener("dragleave", function (e) {
+    var caja = e.target.closest("[data-foto]");
+    if (!caja) return;
+    if (!caja.contains(e.relatedTarget)) caja.classList.remove("is-dragover");
+  });
+  document.addEventListener("drop", function (e) {
+    var caja = e.target.closest("[data-foto]");
+    if (!caja) return;
+    e.preventDefault();
+    caja.classList.remove("is-dragover");
+    var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file || file.type.indexOf("image/") !== 0) return;
+    subirYColocar(file, caja);
   });
 
   /* =============================================================== EDITOR = */
@@ -355,16 +391,27 @@
   });
 
   // Al cambiar el producto o la medida de un item de set, se recargan las
-  // medidas (si cambió el producto) y se revisa el aviso de arriba.
+  // medidas y los colores (si cambió el producto) y se revisa el aviso de arriba.
   document.addEventListener("change", function (e) {
     var sel = e.target.closest("[data-item-prod]");
     if (sel) {
       var fila = sel.closest(".rep-fila");
       $("[data-item-med]", fila).innerHTML = opcionesMedida(sel.value, "");
-    } else if (!e.target.closest("[data-item-med]")) {
+      var coloresViejos = $("[data-item-colores]", fila);
+      var coloresNuevos = itemColoresHTML(sel.value, []);
+      if (coloresViejos) coloresViejos.outerHTML = coloresNuevos;
+      else if (coloresNuevos) fila.insertAdjacentHTML("beforeend", coloresNuevos);
+    } else if (!e.target.closest("[data-item-med]") && !e.target.closest("[data-item-color]")) {
       return;
     }
     actualizarAvisoSet();
+  });
+
+  // Chips de color de un ítem de set: sólo marcar / desmarcar.
+  document.addEventListener("change", function (e) {
+    var c = e.target.closest("[data-item-color]");
+    if (!c) return;
+    c.closest(".color-chip").classList.toggle("is-on", c.checked);
   });
 
   function filaVarianteHTML(v) {
@@ -394,12 +441,33 @@
   // Una foto más de la galería: la miniatura y un texto opcional para
   // accesibilidad ("toallón colgado", "detalle del puño"...).
   function filaGaleriaHTML(f) {
-    return '<div class="rep-fila rep-3" data-fila>' +
+    return '<div class="rep-fila rep-galeria" data-fila>' +
       '<input type="text" data-g-alt placeholder="Qué se ve (opcional)" value="' +
         esc(f.alt || "") + '">' +
       fotoHTML(f.img, "g-img", true) +
+      '<button type="button" class="btn btn-sm" data-usar-principal ' +
+        'title="Pasa esta foto a ser la principal, y la principal viene acá">Usar como principal</button>' +
       '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
     "</div>";
+  }
+
+  // Intercambia el contenido de dos cajas de foto (valor, miniatura, botones):
+  // así "Usar como principal" no sube ni borra nada, sólo cambia de lugar.
+  function swapFotoBoxes(cajaA, cajaB) {
+    var inA = $("[data-campo]", cajaA), inB = $("[data-campo]", cajaB);
+    var vA = inA.value, vB = inB.value;
+    inA.value = vB; inB.value = vA;
+
+    [[cajaA, vB], [cajaB, vA]].forEach(function (par) {
+      var caja = par[0], v = par[1];
+      var img = $("[data-foto-prev]", caja);
+      if (v) { img.src = v; img.style.visibility = "visible"; }
+      else { img.removeAttribute("src"); img.style.visibility = "hidden"; }
+      $("[data-foto-btn]", caja).textContent = v ? "Cambiar foto" : "Subir foto";
+      var quitar = $("[data-foto-quitar]", caja);
+      if (quitar) quitar.hidden = !v;
+      $("[data-foto-nota]", caja).textContent = v ? "" : "JPG, PNG o WebP";
+    });
   }
 
   // El campo del input de foto para un color es "cf__<color>"
@@ -471,13 +539,35 @@
       "<ul>" + probs.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>";
   }
 
+  // Circulitos de color del producto elegido en un ítem de set, para tildar
+  // cuáles puede pedir el cliente en ESE set. Sin tildar ninguno, el ítem
+  // queda igual que antes: sin selector de color.
+  function itemColoresHTML(pid, seleccionados) {
+    var p = prodPorId(pid);
+    var colores = (p && p.colores) || [];
+    if (!colores.length) return "";
+    var on = seleccionados || [];
+    return '<div class="item-colores" data-item-colores>' +
+      colores.map(function (c) {
+        return '<label class="color-chip' + (on.indexOf(c) >= 0 ? " is-on" : "") + '">' +
+          '<input type="checkbox" data-item-color value="' + esc(c) + '"' +
+            (on.indexOf(c) >= 0 ? " checked" : "") + ">" +
+          '<span class="punto" style="background:' + esc(PALETA[c] || "#777") + '"></span>' +
+          esc(c) + "</label>";
+      }).join("") +
+    "</div>";
+  }
+
   function filaItemHTML(it) {
     var pid = it.producto_id || (PRODS[0] && PRODS[0].id) || "";
     return '<div class="rep-fila rep-set" data-fila>' +
-      '<select data-item-prod>' + opcionesProducto(pid) + "</select>" +
-      '<select data-item-med>' + opcionesMedida(pid, it.medida || "") + "</select>" +
-      '<input type="number" min="1" step="1" data-item-cant value="' + esc(it.cantidad || 1) + '">' +
-      '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
+      '<div class="rep-set-linea">' +
+        '<select data-item-prod>' + opcionesProducto(pid) + "</select>" +
+        '<select data-item-med>' + opcionesMedida(pid, it.medida || "") + "</select>" +
+        '<input type="number" min="1" step="1" data-item-cant value="' + esc(it.cantidad || 1) + '">' +
+        '<button type="button" class="rep-del" data-rep-del aria-label="Quitar">×</button>' +
+      "</div>" +
+      itemColoresHTML(pid, it.colores) +
     "</div>";
   }
 
@@ -1000,6 +1090,8 @@
           (s.combo_items || []).map(filaItemHTML).join("") +
         "</div>" +
         '<button type="button" class="btn btn-sm" data-rep-add="items">+ Agregar producto</button>' +
+        '<p class="hint">Tildá colores en un producto sólo si querés que el cliente ' +
+          "tenga que elegir uno para ese ítem. Sin tildar ninguno, queda sin selector de color.</p>" +
       "</fieldset>";
 
     abrirEditor(nuevo ? "Nuevo set" : s.nombre, cuerpo, function () {
@@ -1012,6 +1104,7 @@
           producto_id: $("[data-item-prod]", f).value,
           medida:      $("[data-item-med]", f).value,
           cantidad:    Math.max(1, Number($("[data-item-cant]", f).value) || 1),
+          colores:     $$("[data-item-color]:checked", f).map(function (c) { return c.value; }),
           orden:       i,
         };
       }).filter(function (it) { return it.producto_id && it.medida; });

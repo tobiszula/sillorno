@@ -90,6 +90,16 @@ create table if not exists public.color_fotos (
 
 create index if not exists color_fotos_producto_idx on public.color_fotos (producto_id);
 
+create table if not exists public.producto_fotos (
+  id          bigint generated always as identity primary key,
+  producto_id text not null references public.productos(id) on update cascade on delete cascade,
+  img         text not null,
+  alt         text,
+  orden       int not null default 0
+);
+
+create index if not exists producto_fotos_producto_idx on public.producto_fotos (producto_id);
+
 -- Sets / combos ------------------------------------------------------------
 create table if not exists public.combos (
   id          text primary key,
@@ -108,7 +118,8 @@ create table if not exists public.combo_items (
   producto_id text not null references public.productos(id) on update cascade on delete cascade,
   medida      text not null,
   cantidad    int  not null default 1 check (cantidad > 0),
-  orden       int  not null default 0
+  orden       int  not null default 0,
+  colores     text[] not null default '{}'   -- colores que el cliente puede elegir para este ítem; vacío = sin elegir color
 );
 
 create index if not exists combo_items_combo_idx on public.combo_items (combo_id);
@@ -145,7 +156,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['categorias','productos','variantes','estampados','color_fotos','combos','combo_items']
+  foreach t in array array['categorias','productos','variantes','estampados','color_fotos','producto_fotos','combos','combo_items']
   loop
     execute format('alter table public.%I enable row level security', t);
 
@@ -238,6 +249,12 @@ as $$
                    select coalesce(jsonb_object_agg(cf.color, cf.img), '{}'::jsonb)
                    from public.color_fotos cf where cf.producto_id = p.id
                  ),
+                 'fotos',       coalesce((
+                   select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+                            'img', f.img, 'alt', f.alt
+                          )) order by f.orden, f.id)
+                   from public.producto_fotos f where f.producto_id = p.id
+                 ), '[]'::jsonb),
                  'estampados',  coalesce((
                    select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
                             'slug', e.slug, 'nombre', e.nombre, 'img', e.img
@@ -270,7 +287,7 @@ as $$
                  'items',       coalesce((
                    select jsonb_agg(jsonb_build_object(
                             'producto', i.producto_id, 'medida', i.medida,
-                            'cantidad', i.cantidad
+                            'cantidad', i.cantidad, 'colores', to_jsonb(i.colores)
                           ) order by i.orden)
                    from public.combo_items i where i.combo_id = k.id
                  ), '[]'::jsonb)

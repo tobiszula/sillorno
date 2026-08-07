@@ -146,7 +146,7 @@
   // que el anunciado en la web, con su descuento incluido.
   function cartKey(it) {
     return it.tipo === "combo"
-      ? "combo|" + it.cid
+      ? "combo|" + it.cid + "|" + (it.colores || []).join(",")
       : "p|" + it.pid + "|" + it.medida + "|" + (it.estampado || "") + "|" + (it.color || "");
   }
 
@@ -161,8 +161,8 @@
     cartPush({ tipo: "producto", pid: pid, medida: medida,
                estampado: estampado || null, color: color || null, qty: qty || 1 });
   }
-  function cartAddCombo(cid, qty) {
-    cartPush({ tipo: "combo", cid: cid, qty: qty || 1 });
+  function cartAddCombo(cid, qty, colores) {
+    cartPush({ tipo: "combo", cid: cid, colores: colores || [], qty: qty || 1 });
   }
 
   function cartSet(k, qty) {
@@ -203,17 +203,14 @@
                (c.sub ? '<span class="cat-banner-sub">' + esc(c.sub) + '</span>' : '') +
              '</span></button>';
     });
-    // "Ver todo": solo visible en la grilla de desktop (oculto en mobile por CSS)
-    tiles.push('<button class="cat-banner cat-all" type="button" data-cat-all aria-label="Ver todo">' +
-      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>' +
-      '<rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>' +
-      '</svg><span class="cat-banner-txt"><span class="cat-banner-name">Ver todo</span></span></button>');
     // Sets armados: no es una categoría de producto, así que en vez de filtrar
-    // el catálogo lleva directo a la sección de combos.
+    // el catálogo lleva directo a la sección de combos. Ocupa un banner ancho
+    // propio, aparte de la grilla de categorías (ver .cat-banner:last-child).
     if (COMBOS.length) {
+      // Foto de ambiente (no de un producto suelto): en la franja ancha del
+      // banner, una foto de producto recortada queda irreconocible.
       tiles.push('<a class="cat-banner" href="#combos" aria-label="Ver sets armados">' +
-        '<img src="' + esc(foto(COMBOS[0].img, 720)) + '" alt="" loading="lazy" decoding="async">' +
+        '<img src="' + esc(foto("assets/img/lifestyle-cama.webp", 1200)) + '" alt="" loading="lazy" decoding="async">' +
         '<span class="cat-banner-txt"><span class="cat-banner-name">Sets</span>' +
         '<span class="cat-banner-sub">Combos con descuento</span></span></a>');
     }
@@ -282,15 +279,37 @@
     return { full: full, final: full * (1 - desc), ahorro: full * desc };
   }
 
+  // Color elegido por el cliente para cada ítem de cada set que pide color.
+  // Clave "comboId|índice del ítem" -> color. Arranca en el primer color de
+  // la lista de cada ítem, así "Agregar" siempre manda algo elegido.
+  var comboColorSel = {};
+  function comboColorKey(cid, idx) { return cid + "|" + idx; }
+  function comboColorGet(c, idx, it) {
+    var k = comboColorKey(c.id, idx);
+    if (!(k in comboColorSel)) comboColorSel[k] = it.colores[0];
+    return comboColorSel[k];
+  }
+
   function mountCombos() {
     var box = $("[data-combos]"); if (!box) return;
     box.innerHTML = COMBOS.map(function (c) {
       var pr = comboPrecios(c);
       if (!pr.full) return "";
-      var lista = (c.items || []).map(function (it) {
+      var lista = (c.items || []).map(function (it, idx) {
         var p = byId(it.producto);
-        return p ? "<li>" + esc(p.nombre) + " · " + esc(it.medida) +
-               (it.cantidad > 1 ? " ×" + it.cantidad : "") + "</li>" : "";
+        if (!p) return "";
+        var swatches = "";
+        if (it.colores && it.colores.length) {
+          var elegido = comboColorGet(c, idx, it);
+          swatches = '<span class="combo-swatches">' + it.colores.map(function (col) {
+            return '<button type="button" class="swatch' + (elegido === col ? " is-active" : "") + '" ' +
+              'data-combo-color="' + esc(c.id) + '" data-combo-idx="' + idx + '" data-combo-col="' + esc(col) + '" ' +
+              'title="' + esc(col) + '" aria-label="' + esc(col) + '" style="--sw:' + (COLORES[col] || "#888") + '">' +
+              "</button>";
+          }).join("") + "</span>";
+        }
+        return "<li>" + esc(p.nombre) + " · " + esc(it.medida) +
+               (it.cantidad > 1 ? " ×" + it.cantidad : "") + swatches + "</li>";
       }).join("");
       return '<article class="combo reveal">' +
         '<div class="combo-media"><img src="' + esc(foto(c.img, 720)) + '" alt="' + esc(c.nombre) +
@@ -832,6 +851,8 @@
             var c = comboById(it.cid); if (!c) return "";
             img = c.img; nombre = c.nombre;
             detalle = "Set · " + c.items.reduce(function (n, x) { return n + x.cantidad; }, 0) + " productos";
+            var coloresSet = (it.colores || []).filter(Boolean);
+            if (coloresSet.length) detalle += " · " + coloresSet.join(", ");
           } else {
             var p = byId(it.pid); if (!p) return "";
             var v = variante(p, it.medida); if (!v) return "";
@@ -898,10 +919,12 @@
     var lineas = cart.map(function (it) {
       if (it.tipo === "combo") {
         var c = comboById(it.cid); if (!c) return "";
-        var detalle = c.items.map(function (x) {
+        var detalle = c.items.map(function (x, idx) {
           var pp = byId(x.producto);
-          return pp ? "   – " + pp.nombre + " · " + x.medida +
-                      (x.cantidad > 1 ? " ×" + x.cantidad : "") : "";
+          if (!pp) return "";
+          var col = (it.colores || [])[idx];
+          return "   – " + pp.nombre + " · " + x.medida +
+                 (x.cantidad > 1 ? " ×" + x.cantidad : "") + (col ? " · " + col : "");
         }).filter(Boolean).join("\n");
         return "• " + c.nombre + " ×" + it.qty + " — " + money(precioItem(it) * it.qty) +
                "\n" + detalle;
@@ -1143,11 +1166,27 @@
         return;
       }
 
+      // Elegir color de un ítem dentro de un set. Sólo se togglean clases acá
+      // (no se vuelve a dibujar la tarjeta): recrearla de nuevo cortaría la
+      // animación de entrada y la dejaría invisible sobre el fondo oscuro.
+      if ((el = e.target.closest("[data-combo-color]"))) {
+        var kCombo = comboColorKey(el.getAttribute("data-combo-color"), el.getAttribute("data-combo-idx"));
+        comboColorSel[kCombo] = el.getAttribute("data-combo-col");
+        $$('[data-combo-color="' + el.getAttribute("data-combo-color") + '"][data-combo-idx="' +
+            el.getAttribute("data-combo-idx") + '"]').forEach(function (s) {
+          s.classList.toggle("is-active", s === el);
+        });
+        return;
+      }
+
       // Combos
       if ((el = e.target.closest("[data-add-combo]"))) {
         var combo = comboById(el.getAttribute("data-add-combo"));
         if (!combo) return;
-        cartAddCombo(combo.id, 1);
+        var coloresElegidos = (combo.items || []).map(function (it, idx) {
+          return (it.colores && it.colores.length) ? comboColorGet(combo, idx, it) : null;
+        });
+        cartAddCombo(combo.id, 1, coloresElegidos);
         toast(combo.nombre + " agregado al pedido");
         return;
       }
