@@ -3,6 +3,9 @@
   "buildCommand": "node tools/build-config.js",
   "outputDirectory": ".",
   "trailingSlash": false,
+  "rewrites": [
+    { "source": "/producto/:id", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)\\.(html|css|js)",

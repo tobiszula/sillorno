@@ -239,17 +239,18 @@
     var spec = [p.material, p.gramaje].filter(Boolean).join(" · ");
 
     return '<article class="card" data-card="' + esc(p.id) + '">' +
-      '<button class="card-media" type="button" data-open-product="' + esc(p.id) + '" ' +
+      '<a class="card-media" href="' + esc(urlProducto(p.id)) + '" data-open-product="' + esc(p.id) + '" ' +
         'aria-label="Ver ' + esc(p.nombre) + '">' +
         '<img src="' + esc(foto(p.img, 600)) + '"' + fotoSrcset(p.img, [320, 480, 640, 900]) +
           ' sizes="(max-width: 719px) 50vw, (max-width: 1279px) 33vw, 320px"' +
           ' alt="' + esc(p.nombre) + '" loading="lazy" decoding="async">' +
         (flags ? '<span class="card-flags">' + flags + "</span>" : "") +
-      "</button>" +
+      "</a>" +
       '<div class="card-body">' +
         '<p class="card-cat">' + esc(p._cat) + "</p>" +
         '<h3 class="card-name">' +
-          '<button type="button" data-open-product="' + esc(p.id) + '">' + esc(p.nombre) + "</button>" +
+          '<a href="' + esc(urlProducto(p.id)) + '" data-open-product="' + esc(p.id) + '">' +
+            esc(p.nombre) + "</a>" +
         "</h3>" +
         '<p class="card-spec">' + esc(spec) + "</p>" +
         '<div class="card-foot">' +
@@ -809,6 +810,23 @@
     });
   })();
 
+  /* ====================================================== RUTAS ==========
+     Cada producto tiene su propia dirección: /producto/frazada-microfibra.
+     Se puede compartir por WhatsApp, abrir en pestaña nueva y el botón atrás
+     del celular vuelve al catálogo.
+
+     Como el sitio es una sola página, vercel.json (y .htaccess) mandan
+     cualquier /producto/... al index. Para hostings que no permiten esa
+     regla también se acepta ?producto=id, que funciona en cualquier lado. */
+  function urlProducto(pid) { return "/producto/" + encodeURIComponent(pid); }
+
+  function productoDeLaURL() {
+    var m = location.pathname.match(/\/producto\/([^\/?#]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    var q = location.search.match(/[?&]producto=([^&#]+)/);
+    return q ? decodeURIComponent(q[1]) : null;
+  }
+
   function openProduct(pid) {
     var p = byId(pid); if (!p) return;
     var primera = (p.variantes || []).filter(function (v) { return v.stock !== "agotado"; })[0] || p.variantes[0];
@@ -821,7 +839,8 @@
       qty: 1
     };
     renderProduct();
-    openDialog($("[data-product-dialog]"));
+    openDialog($("[data-product-dialog]"), urlProducto(pid));
+    document.title = p.nombre + " · Sillorno";
     precargarFotos(p);
   }
 
@@ -849,8 +868,8 @@
   var overlayStack = [];
   var overlayProgrammaticPop = false;
 
-  function pushOverlay(onBack) {
-    history.pushState({ sillornoOverlay: overlayStack.length + 1 }, "", location.href);
+  function pushOverlay(onBack, url) {
+    history.pushState({ sillornoOverlay: overlayStack.length + 1 }, "", url || location.href);
     overlayStack.push(onBack);
   }
   // Se llama al cerrar un panel desde la propia UI (botón X, backdrop, etc.)
@@ -871,8 +890,9 @@
 
   /* ==========================================================  DIÁLOGOS  */
   var lastFocus = null;
+  var TITULO_BASE = document.title;
 
-  function openDialog(dlg) {
+  function openDialog(dlg, url) {
     if (!dlg || dlg.open) return;
     lastFocus = document.activeElement;
     dlg.showModal();
@@ -880,11 +900,12 @@
     requestAnimationFrame(function () { dlg.classList.add("is-open"); });
     var onBack = function () { closeDialog(dlg, true); };
     dlg._overlayCloser = onBack;
-    pushOverlay(onBack);
+    pushOverlay(onBack, url);
   }
 
   function closeDialog(dlg, fromBack) {
     if (!dlg || !dlg.open) return;
+    if (dlg === $("[data-product-dialog]")) document.title = TITULO_BASE;
     dlg.classList.remove("is-open");
     setTimeout(function () {
       if (dlg.open) dlg.close();
@@ -1166,7 +1187,10 @@
 
       // Ficha de producto
       if ((el = e.target.closest("[data-open-product]"))) {
-        openProduct(el.getAttribute("data-open-product")); return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        openProduct(el.getAttribute("data-open-product"));
+        return;
       }
       if ((el = e.target.closest("[data-quick]"))) {
         var p = byId(el.getAttribute("data-quick"));
@@ -1381,6 +1405,17 @@
 
     window.__SILLORNO_REMOUNT__ = remontar;
     document.documentElement.classList.add("is-ready");
+
+    /* Entró directo a /producto/algo (link compartido, pestaña nueva o
+       recarga): dejamos el catálogo como entrada anterior del historial y
+       abrimos la ficha encima. Así el botón atrás vuelve al catálogo y no
+       se va del sitio. */
+    safe(function () {
+      var pid = productoDeLaURL();
+      if (!pid || !byId(pid)) return;
+      history.replaceState({}, "", "/");
+      openProduct(pid);
+    }, "rutaProducto");
   }
 
   /* Si hay base de datos, esperamos a que conteste (lib/data.js le pone un

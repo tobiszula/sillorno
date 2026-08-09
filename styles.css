@@ -694,7 +694,15 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 .card:hover { border-color: var(--line-2); transform: translateY(-4px); box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .9); }
 .card:hover::after { box-shadow: inset 0 -70px 60px -60px rgba(168, 96, 58, .55); }
 
-.card-media { position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: var(--bg-4); }
+/* Es un <a> (cada producto tiene su URL), así que hay que forzarle el display:
+   un enlace es inline y sin esto no toma el aspect-ratio. */
+.card-media {
+  display: block;
+  position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: var(--bg-4);
+  color: inherit; text-decoration: none;
+}
+.card-name a { color: inherit; text-decoration: none; }
+.card-name a:hover { text-decoration: underline; text-underline-offset: .18em; }
 .card-media img {
   width: 100%; height: 100%; object-fit: cover;
   transition: transform .8s var(--ease-out), filter .5s var(--ease-out);

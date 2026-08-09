@@ -19,3 +19,11 @@
 </IfModule>
 
 ErrorDocument 404 /index.html
+
+# Cada producto tiene su dirección propia (/producto/frazada-microfibra).
+# El sitio es una sola página, así que cualquier ruta de producto se sirve
+# con el index y el JavaScript se encarga de abrir la ficha.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^producto/[^/]+/?$ /index.html [L]
+</IfModule>
