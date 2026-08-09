@@ -821,14 +821,41 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 .pd-media {
   position: relative; width: 100%; aspect-ratio: 4 / 5; max-height: 46dvh;
   background: var(--bg-4); touch-action: pan-y;
+  overflow: hidden;   /* el fondo va ampliado: sin esto se derrama */
 }
-.pd-media img { width: 100%; height: 100%; object-fit: cover; transition: opacity .28s var(--ease-out); }
+/* La foto se ve ENTERA. Las fotos por color son apaisadas (4:3) y las de
+   producto verticales (4/5): con "cover" el marco recortaba hasta el 40% y se
+   comía la etiqueta. Con "contain" no se pierde nada.
+
+   El hueco que queda a los costados no se deja vacío: se rellena con la misma
+   foto ampliada y desenfocada, así el color acompaña y no se ve un cajón. */
+/* Ojo con el orden: la foto de adelante se excluye del fondo con :not(),
+   porque si no esta regla le gana en especificidad y lo saca de posición. */
+.pd-media img:not(.pd-fondo) {
+  position: relative;
+  z-index: 1;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  transition: opacity .28s var(--ease-out);
+}
+
+.pd-media .pd-fondo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scale(1.25);
+  filter: blur(26px) saturate(1.15) brightness(.72);
+  pointer-events: none;
+}
 
 /* Overlay sobre el borde inferior de la foto: el selector de color. Va
    encima y no dentro del flujo, así queda a la vista sin scrollear y no le
    come alto a la foto ni al resto de la ficha. */
 .pd-overlay {
   position: absolute;
+  z-index: 2;                 /* por encima de la foto y del fondo desenfocado */
   left: 0; right: 0; bottom: 0;
   display: flex; flex-direction: column; gap: .65rem;
   padding: 3rem .9rem .85rem;

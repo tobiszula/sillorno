@@ -624,7 +624,13 @@
     if (el.getAttribute("src") === full) return;
     el.style.opacity = "0";
     var pre = new Image();
-    pre.onload = pre.onerror = function () { el.src = full; el.style.opacity = "1"; };
+    pre.onload = pre.onerror = function () {
+      el.src = full;
+      el.style.opacity = "1";
+      // El fondo desenfocado sigue a la foto: va chico porque igual se difumina.
+      var fondo = $("[data-pd-fondo]");
+      if (fondo) fondo.src = foto(currentPdImage(p), 400);
+    };
     pre.src = full;
     syncGaleria();
   }
@@ -704,7 +710,9 @@
     return '<div class="pd">' +
       '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-      '<div class="pd-media" data-pd-swipe><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
+      '<div class="pd-media" data-pd-swipe>' +
+        '<img class="pd-fondo" src="' + esc(foto(img, 400)) + '" alt="" aria-hidden="true" data-pd-fondo>' +
+        '<img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
         arrows + contador +
         '<div class="pd-overlay">' + colores + "</div></div>" +
       '<div class="pd-body">' +
