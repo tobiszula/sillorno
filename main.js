@@ -197,9 +197,7 @@
     var tiles = CATEGORIAS.map(function (c) {
       return '<button class="cat-banner" type="button" data-cat-tile="' + esc(c.id) + '" ' +
              'aria-label="Ver ' + esc(c.nombre) + '">' +
-             '<img src="' + esc(foto(c.img, 720)) + '"' + fotoSrcset(c.img, [420, 720, 1040]) +
-             ' sizes="(max-width: 719px) 100vw, 33vw"' +
-             ' alt="" loading="lazy" decoding="async">' +
+             '<img src="' + esc(foto(c.img, 720)) + '" alt="" loading="lazy" decoding="async">' +
              '<span class="cat-banner-txt">' +
                '<span class="cat-banner-name">' + esc(c.corto || c.nombre) + '</span>' +
                (c.sub ? '<span class="cat-banner-sub">' + esc(c.sub) + '</span>' : '') +
@@ -239,18 +237,15 @@
     var spec = [p.material, p.gramaje].filter(Boolean).join(" · ");
 
     return '<article class="card" data-card="' + esc(p.id) + '">' +
-      '<a class="card-media" href="' + esc(urlProducto(p.id)) + '" data-open-product="' + esc(p.id) + '" ' +
+      '<button class="card-media" type="button" data-open-product="' + esc(p.id) + '" ' +
         'aria-label="Ver ' + esc(p.nombre) + '">' +
-        '<img src="' + esc(foto(p.img, 600)) + '"' + fotoSrcset(p.img, [320, 480, 640, 900]) +
-          ' sizes="(max-width: 719px) 50vw, (max-width: 1279px) 33vw, 320px"' +
-          ' alt="' + esc(p.nombre) + '" loading="lazy" decoding="async">' +
+        '<img src="' + esc(foto(p.img, 600)) + '" alt="' + esc(p.nombre) + '" loading="lazy" decoding="async">' +
         (flags ? '<span class="card-flags">' + flags + "</span>" : "") +
-      "</a>" +
+      "</button>" +
       '<div class="card-body">' +
         '<p class="card-cat">' + esc(p._cat) + "</p>" +
         '<h3 class="card-name">' +
-          '<a href="' + esc(urlProducto(p.id)) + '" data-open-product="' + esc(p.id) + '">' +
-            esc(p.nombre) + "</a>" +
+          '<button type="button" data-open-product="' + esc(p.id) + '">' + esc(p.nombre) + "</button>" +
         "</h3>" +
         '<p class="card-spec">' + esc(spec) + "</p>" +
         '<div class="card-foot">' +
@@ -554,33 +549,13 @@
     // Cualquier otra URL absoluta (Supabase Storage, por ejemplo) se deja igual.
     if (/^(https?:)?\/\//i.test(u) || u.indexOf("data:") === 0) return u;
 
-    // Absoluta: en /producto/algo una ruta relativa se resolvería contra
-    // /producto/ y la foto daría 404.
-    if (!CLOUD) return u.charAt(0) === "/" ? u : "/" + u;
+    if (!CLOUD) return u;                       // sin Cloudinary: ruta local
 
     // assets/img/toallon-icone.webp -> sillorno/toallon-icone
     var nombre = u.replace(/^\/?assets\/img\//, "").replace(/\.[a-z0-9]+$/i, "");
     if (!nombre) return u;
     return "https://res.cloudinary.com/" + CLOUD + "/image/upload/f_auto,q_auto" +
            (ancho ? ",w_" + ancho : "") + "/" + CARPETA + "/" + nombre;
-  }
-
-  /* Un celular muestra la tarjeta a unos 163px de ancho: con pantalla al doble
-     de densidad necesita 326px, no los 990px del archivo original. Esto le da
-     al navegador varios tamaños para que baje el que corresponde.
-
-     Sólo sirve con Cloudinary, que genera cada tamaño al vuelo. Sin Cloudinary
-     devuelve vacío y el <img> queda como estaba. */
-  function fotoSrcset(src, anchos) {
-    if (!CLOUD) return "";
-    var u = String(src || "").trim();
-    if (!u) return "";
-    // Las fotos de otros lados (Supabase Storage) no se pueden redimensionar.
-    if (!/^(https?:)?\/\//i.test(u) || u.indexOf("res.cloudinary.com/" + CLOUD + "/") >= 0) {
-      var partes = anchos.map(function (w) { return esc(foto(u, w)) + " " + w + "w"; });
-      return ' srcset="' + partes.join(", ") + '"';
-    }
-    return "";
   }
 
   // La galería: la foto principal primero y después las extra que cargó el
@@ -627,13 +602,7 @@
     if (el.getAttribute("src") === full) return;
     el.style.opacity = "0";
     var pre = new Image();
-    pre.onload = pre.onerror = function () {
-      el.src = full;
-      el.style.opacity = "1";
-      // El fondo desenfocado sigue a la foto: va chico porque igual se difumina.
-      var fondo = $("[data-pd-fondo]");
-      if (fondo) fondo.src = foto(currentPdImage(p), 400);
-    };
+    pre.onload = pre.onerror = function () { el.src = full; el.style.opacity = "1"; };
     pre.src = full;
     syncGaleria();
   }
@@ -711,18 +680,9 @@
                   : (agotado ? "Sin stock por ahora" : "Disponible");
 
     return '<div class="pd">' +
-      '<nav class="pd-migas" aria-label="Dónde estoy">' +
-        '<a href="/" data-close-product>Inicio</a>' +
-        '<span aria-hidden="true">›</span>' +
-        '<a href="/#catalogo" data-close-product>Catálogo</a>' +
-        '<span aria-hidden="true">›</span>' +
-        '<span class="pd-migas-actual">' + esc(p.nombre) + '</span>' +
-      '</nav>' +
-      '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Volver al catálogo">' +
+      '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-      '<div class="pd-media" data-pd-swipe>' +
-        '<img class="pd-fondo" src="' + esc(foto(img, 400)) + '" alt="" aria-hidden="true" data-pd-fondo>' +
-        '<img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
+      '<div class="pd-media" data-pd-swipe><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
         arrows + contador +
         '<div class="pd-overlay">' + colores + "</div></div>" +
       '<div class="pd-body">' +
@@ -819,61 +779,6 @@
     });
   })();
 
-  /* ====================================================== RUTAS ==========
-     Cada producto tiene su propia dirección: /producto/frazada-microfibra.
-     Se puede compartir por WhatsApp, abrir en pestaña nueva y el botón atrás
-     del celular vuelve al catálogo.
-
-     Como el sitio es una sola página, vercel.json (y .htaccess) mandan
-     cualquier /producto/... al index. Para hostings que no permiten esa
-     regla también se acepta ?producto=id, que funciona en cualquier lado. */
-  function urlProducto(pid) { return "/producto/" + encodeURIComponent(pid); }
-
-  function productoDeLaURL() {
-    var m = location.pathname.match(/\/producto\/([^\/?#]+)/);
-    if (m) return decodeURIComponent(m[1]);
-    var q = location.search.match(/[?&]producto=([^&#]+)/);
-    return q ? decodeURIComponent(q[1]) : null;
-  }
-
-  /* La ficha ocupa toda la pantalla: escondemos el catálogo (lo hace el CSS
-     con la clase del body) y dejamos header, ficha y footer. El historial se
-     maneja igual que los paneles, así el botón atrás vuelve al catálogo. */
-  var scrollCatalogo = 0;
-
-  function abrirPaginaProducto(url) {
-    var pg = $("[data-product-page]"); if (!pg) return;
-    if (!document.body.classList.contains("is-producto")) {
-      scrollCatalogo = window.scrollY;
-      pushOverlay(cerrarPaginaProducto, url);
-    } else if (url) {
-      history.replaceState(history.state, "", url);
-    }
-    pg.hidden = false;
-    document.body.classList.add("is-producto");
-    window.scrollTo(0, 0);
-  }
-
-  function cerrarPaginaProducto() {
-    var pg = $("[data-product-page]"); if (!pg) return;
-    pg.hidden = true;
-    document.body.classList.remove("is-producto");
-    document.title = TITULO_BASE;
-    window.scrollTo(0, scrollCatalogo);
-  }
-
-  // Cierre desde la UI (botón volver): saca también la entrada del historial.
-  function cerrarProductoDesdeUI() {
-    if (!document.body.classList.contains("is-producto")) return;
-    var idx = overlayStack.lastIndexOf(cerrarPaginaProducto);
-    cerrarPaginaProducto();
-    if (idx >= 0) {
-      overlayStack.splice(idx, 1);
-      overlayProgrammaticPop = true;
-      history.back();
-    }
-  }
-
   function openProduct(pid) {
     var p = byId(pid); if (!p) return;
     var primera = (p.variantes || []).filter(function (v) { return v.stock !== "agotado"; })[0] || p.variantes[0];
@@ -886,8 +791,7 @@
       qty: 1
     };
     renderProduct();
-    abrirPaginaProducto(urlProducto(pid));
-    document.title = p.nombre + " · Sillorno";
+    openDialog($("[data-product-dialog]"));
     precargarFotos(p);
   }
 
@@ -915,8 +819,8 @@
   var overlayStack = [];
   var overlayProgrammaticPop = false;
 
-  function pushOverlay(onBack, url) {
-    history.pushState({ sillornoOverlay: overlayStack.length + 1 }, "", url || location.href);
+  function pushOverlay(onBack) {
+    history.pushState({ sillornoOverlay: overlayStack.length + 1 }, "", location.href);
     overlayStack.push(onBack);
   }
   // Se llama al cerrar un panel desde la propia UI (botón X, backdrop, etc.)
@@ -937,9 +841,8 @@
 
   /* ==========================================================  DIÁLOGOS  */
   var lastFocus = null;
-  var TITULO_BASE = document.title;
 
-  function openDialog(dlg, url) {
+  function openDialog(dlg) {
     if (!dlg || dlg.open) return;
     lastFocus = document.activeElement;
     dlg.showModal();
@@ -947,7 +850,7 @@
     requestAnimationFrame(function () { dlg.classList.add("is-open"); });
     var onBack = function () { closeDialog(dlg, true); };
     dlg._overlayCloser = onBack;
-    pushOverlay(onBack, url);
+    pushOverlay(onBack);
   }
 
   function closeDialog(dlg, fromBack) {
@@ -1233,10 +1136,7 @@
 
       // Ficha de producto
       if ((el = e.target.closest("[data-open-product]"))) {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-        e.preventDefault();
-        openProduct(el.getAttribute("data-open-product"));
-        return;
+        openProduct(el.getAttribute("data-open-product")); return;
       }
       if ((el = e.target.closest("[data-quick]"))) {
         var p = byId(el.getAttribute("data-quick"));
@@ -1250,19 +1150,7 @@
         }
         return;
       }
-      if ((el = e.target.closest("[data-close-product]"))) {
-        // Las migas son links de verdad (para SEO y para abrir en pestaña
-        // nueva), así que hay que frenar la navegación en el clic normal.
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-        e.preventDefault();
-        var aCatalogo = (el.getAttribute("href") || "").indexOf("#catalogo") >= 0;
-        cerrarProductoDesdeUI();
-        if (aCatalogo) {
-          var cat = $("#catalogo");
-          if (cat) window.scrollTo({ top: cat.getBoundingClientRect().top + window.scrollY - 8 });
-        }
-        return;
-      }
+      if (e.target.closest("[data-close-product]")) { closeDialog($("[data-product-dialog]")); return; }
 
       // Galería: la flechita pasa a la foto siguiente/anterior.
       if ((el = e.target.closest("[data-photo-nav]"))) {
@@ -1316,7 +1204,7 @@
       if (e.target.closest("[data-add-cart]")) {
         var prod = byId(pdState.pid); if (!prod) return;
         cartAdd(pdState.pid, pdState.medida, pdState.estampado, pdState.color, pdState.qty);
-        cerrarProductoDesdeUI();
+        closeDialog($("[data-product-dialog]"));
         toast(prod.nombre + " agregado al pedido");
         return;
       }
@@ -1388,20 +1276,9 @@
   function initContacto() {
     var c = DATA.contacto || {};
     var vis = $("[data-wa-visible]"); if (vis) vis.textContent = c.whatsappVisible || "";
-    // El link lleva ícono adentro: si existe el <span> escribimos ahí, para no
-    // pisarlo con textContent.
     var mail = $("[data-mail]");
-    if (mail) {
-      mail.href = "mailto:" + (c.email || "");
-      var mv = $("[data-mail-visible]", mail);
-      if (mv) mv.textContent = c.email || "Mail"; else mail.textContent = c.email || "";
-    }
-    var ig = $("[data-ig]");
-    if (ig) {
-      ig.href = c.instagramUrl || "#";
-      var iv = $("[data-ig-visible]", ig);
-      if (iv) iv.textContent = c.instagram ? "@" + c.instagram : "Instagram";
-    }
+    if (mail) { mail.textContent = c.email || ""; mail.href = "mailto:" + (c.email || ""); }
+    var ig = $("[data-ig]"); if (ig) ig.href = c.instagramUrl || "#";
     var y = $("[data-year]"); if (y) y.textContent = new Date().getFullYear();
   }
 
@@ -1474,17 +1351,6 @@
 
     window.__SILLORNO_REMOUNT__ = remontar;
     document.documentElement.classList.add("is-ready");
-
-    /* Entró directo a /producto/algo (link compartido, pestaña nueva o
-       recarga): dejamos el catálogo como entrada anterior del historial y
-       abrimos la ficha encima. Así el botón atrás vuelve al catálogo y no
-       se va del sitio. */
-    safe(function () {
-      var pid = productoDeLaURL();
-      if (!pid || !byId(pid)) return;
-      history.replaceState({}, "", "/");
-      openProduct(pid);
-    }, "rutaProducto");
   }
 
   /* Si hay base de datos, esperamos a que conteste (lib/data.js le pone un
