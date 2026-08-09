@@ -197,7 +197,9 @@
     var tiles = CATEGORIAS.map(function (c) {
       return '<button class="cat-banner" type="button" data-cat-tile="' + esc(c.id) + '" ' +
              'aria-label="Ver ' + esc(c.nombre) + '">' +
-             '<img src="' + esc(foto(c.img, 720)) + '" alt="" loading="lazy" decoding="async">' +
+             '<img src="' + esc(foto(c.img, 720)) + '"' + fotoSrcset(c.img, [420, 720, 1040]) +
+             ' sizes="(max-width: 719px) 100vw, 33vw"' +
+             ' alt="" loading="lazy" decoding="async">' +
              '<span class="cat-banner-txt">' +
                '<span class="cat-banner-name">' + esc(c.corto || c.nombre) + '</span>' +
                (c.sub ? '<span class="cat-banner-sub">' + esc(c.sub) + '</span>' : '') +
@@ -239,7 +241,9 @@
     return '<article class="card" data-card="' + esc(p.id) + '">' +
       '<button class="card-media" type="button" data-open-product="' + esc(p.id) + '" ' +
         'aria-label="Ver ' + esc(p.nombre) + '">' +
-        '<img src="' + esc(foto(p.img, 600)) + '" alt="' + esc(p.nombre) + '" loading="lazy" decoding="async">' +
+        '<img src="' + esc(foto(p.img, 600)) + '"' + fotoSrcset(p.img, [320, 480, 640, 900]) +
+          ' sizes="(max-width: 719px) 50vw, (max-width: 1279px) 33vw, 320px"' +
+          ' alt="' + esc(p.nombre) + '" loading="lazy" decoding="async">' +
         (flags ? '<span class="card-flags">' + flags + "</span>" : "") +
       "</button>" +
       '<div class="card-body">' +
@@ -556,6 +560,24 @@
     if (!nombre) return u;
     return "https://res.cloudinary.com/" + CLOUD + "/image/upload/f_auto,q_auto" +
            (ancho ? ",w_" + ancho : "") + "/" + CARPETA + "/" + nombre;
+  }
+
+  /* Un celular muestra la tarjeta a unos 163px de ancho: con pantalla al doble
+     de densidad necesita 326px, no los 990px del archivo original. Esto le da
+     al navegador varios tamaños para que baje el que corresponde.
+
+     Sólo sirve con Cloudinary, que genera cada tamaño al vuelo. Sin Cloudinary
+     devuelve vacío y el <img> queda como estaba. */
+  function fotoSrcset(src, anchos) {
+    if (!CLOUD) return "";
+    var u = String(src || "").trim();
+    if (!u) return "";
+    // Las fotos de otros lados (Supabase Storage) no se pueden redimensionar.
+    if (!/^(https?:)?\/\//i.test(u) || u.indexOf("res.cloudinary.com/" + CLOUD + "/") >= 0) {
+      var partes = anchos.map(function (w) { return esc(foto(u, w)) + " " + w + "w"; });
+      return ' srcset="' + partes.join(", ") + '"';
+    }
+    return "";
   }
 
   // La galería: la foto principal primero y después las extra que cargó el
