@@ -374,9 +374,9 @@ label > input, label > textarea, label > select { margin-top: .4rem; }
 .tarjeta-acc { display: flex; gap: .4rem; flex: none; }
 
 .pill {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: .14em;
+  letter-spacing: .12em;
   text-transform: uppercase;
   padding: .24rem .44rem;
   border-radius: 4px;
@@ -452,14 +452,14 @@ fieldset {
   background: rgba(255, 255, 255, .012);
 }
 legend {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: .14em;
+  letter-spacing: .13em;
   text-transform: uppercase;
   color: var(--txt-3);
   padding: 0 .4rem;
 }
-legend .hint { font-size: 10px; letter-spacing: .14em; text-transform: none; }
+legend .hint { font-size: 11px; letter-spacing: .13em; text-transform: none; }
 
 .check {
   display: flex;
@@ -521,6 +521,7 @@ legend .hint { font-size: 10px; letter-spacing: .14em; text-transform: none; }
 /* chips de color */
 .colores { display: flex; flex-wrap: wrap; gap: .4rem; }
 .color-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: .38rem;
@@ -534,7 +535,23 @@ legend .hint { font-size: 10px; letter-spacing: .14em; text-transform: none; }
   background: transparent;
   transition: color .16s ease, border-color .16s ease, background .16s ease;
 }
-.color-chip input { display: none; }
+/* Oculto visualmente, no del DOM: así el checkbox sigue en el orden de
+   tabulación y se puede tildar con teclado (barra espaciadora). */
+.color-chip input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.color-chip:has(input:focus-visible) {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
 .color-chip .punto {
   width: 12px; height: 12px;
   border-radius: 50%;
@@ -584,16 +601,38 @@ legend .hint { font-size: 10px; letter-spacing: .14em; text-transform: none; }
 
 /* ---------------------------------------------------------- responsive -- */
 @media (max-width: 720px) {
+  /* En vez de esconder el detalle (ej. "Toallón"), lo apilamos debajo del
+     nombre de la medida: sigue estando ahí, sólo que no compite por ancho
+     con el precio. */
   .pfila { grid-template-columns: 1fr 130px; }
-  .pfila-det { display: none; }
+  .pfila-med { grid-column: 1; }
+  .pfila-det { display: block; grid-column: 1; font-size: 11px; margin-top: .15rem; }
+  .pfila input { grid-column: 2; grid-row: 1 / 3; }
   .campos { grid-template-columns: 1fr; }
   .rep-fila { grid-template-columns: 1fr 1fr 38px; }
   .rep-set-linea { grid-template-columns: 1fr 1fr 38px; }
   .rep-fila.rep-galeria { grid-template-columns: 1fr 1fr; }
+
+  /* Fila de medida/precio: en vez de apretar el precio contra el botón de
+     borrar en una sola columna de 38px, pasa a 2x2 así el precio queda con
+     ancho real para escribir un número con comodidad. */
+  .rep-fila:not(.rep-3):not(.rep-galeria):not(.rep-set) {
+    grid-template-columns: 1fr 1fr;
+  }
+  .rep-fila:not(.rep-3):not(.rep-galeria):not(.rep-set) [data-rep-del] {
+    grid-column: 2;
+    justify-self: end;
+    width: 38px;
+  }
   .tarjeta { flex-wrap: wrap; }
   .tarjeta-acc { width: 100%; justify-content: flex-end; }
   .top-in { gap: .6rem; }
   .tabs { order: 3; width: 100%; }
   .editor { max-height: 96dvh; }
   .editor form { max-height: 96dvh; }
+
+  /* Objetivos táctiles más grandes: el dedo necesita más margen que el
+     cursor del mouse para no tocar el botón de al lado por error. */
+  .tab { padding: .82rem .85rem; }
+  .btn-sm { padding: .72rem .72rem; }
 }

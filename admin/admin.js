@@ -52,11 +52,33 @@
     toastT = setTimeout(function () { el.hidden = true; }, esError ? 6000 : 2800);
   }
 
-  // Los errores de Supabase vienen con .message; los de red, no.
+  // Traduce los errores más comunes de Supabase/Postgres y de red a algo
+  // que se entienda sin saber de bases de datos. El dueño del panel no es
+  // técnico, así que nunca debería ver un mensaje de error crudo del
+  // servidor — eso queda en la consola, por si hay que debuguear después.
+  var ERRORES_CONOCIDOS = [
+    [/invalid login/i, "Mail o contraseña incorrectos."],
+    [/failed to fetch|networkerror|network request failed/i,
+      "No hay conexión a internet. Revisá tu wifi o datos móviles y probá de nuevo."],
+    [/duplicate key value violates unique constraint/i,
+      "Ya existe un registro con ese mismo dato."],
+    [/violates foreign key constraint/i,
+      "No se puede borrar: se está usando en otro lado (por ejemplo, en un set)."],
+    [/null value in column .* violates not-null/i,
+      "Falta completar un campo obligatorio."],
+    [/jwt expired|invalid jwt/i,
+      "La sesión expiró. Recargá la página e iniciá sesión de nuevo."],
+    [/row-level security/i,
+      "No tenés permiso para hacer esto."],
+  ];
   function detalle(err) {
     if (!err) return "Error desconocido.";
-    if (err.message) return err.message;
-    return String(err);
+    var msg = err.message || String(err);
+    for (var i = 0; i < ERRORES_CONOCIDOS.length; i++) {
+      if (ERRORES_CONOCIDOS[i][0].test(msg)) return ERRORES_CONOCIDOS[i][1];
+    }
+    console.error("Sillorno admin — error sin traducir:", err);
+    return "Algo salió mal y no se pudo completar. Probá de nuevo en un momento.";
   }
 
   function mostrar(sel, on) { var el = $(sel); if (el) el.hidden = !on; }
@@ -333,6 +355,11 @@
     $("[data-editor-error]").hidden = true;
     alGuardar = onGuardar;
     dlg.showModal();
+    // El foco por defecto cae en "Cerrar" (primer botón del diálogo). Lo
+    // mandamos al primer campo real así quien abre con teclado o lector de
+    // pantalla llega directo a lo que vino a editar.
+    var primerCampo = $("[data-editor-body] input, [data-editor-body] select, [data-editor-body] textarea");
+    if (primerCampo) primerCampo.focus();
   }
 
   function errorEditor(msg) {
@@ -655,6 +682,28 @@
 
   $("[data-buscar-precios]").addEventListener("input", vistaPrecios);
 
+  // Ajuste de precio en lote: sube o baja un % todos los precios que están
+  // visibles (respeta el filtro de búsqueda). No guarda solo — sólo llena
+  // los inputs y dispara el mismo marcado de "cambiado" que ya existe, así
+  // el dueño revisa antes de tocar «Guardar cambios».
+  $("[data-lote-aplicar]").addEventListener("click", function () {
+    var pct = Number($("[data-lote-pct]").value);
+    if (!pct) { toast("Poné un porcentaje distinto de 0.", true); return; }
+    var inputs = $$("[data-lista-precios] [data-precio-id]");
+    if (!inputs.length) {
+      toast("No hay precios visibles para ajustar. Probá sacar el filtro de búsqueda.", true);
+      return;
+    }
+    inputs.forEach(function (inp) {
+      var actual = Number(inp.value) || 0;
+      var nuevo = Math.round((actual * (1 + pct / 100)) / 100) * 100;
+      inp.value = nuevo;
+      inp.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    toast(inputs.length + " precio" + (inputs.length === 1 ? "" : "s") +
+      " ajustado" + (inputs.length === 1 ? "" : "s") + " — revisalos y tocá «Guardar cambios» para confirmar.");
+  });
+
   /* ============================================================ PRODUCTOS = */
   function vistaProductos() {
     var q = String($("[data-buscar-productos]").value || "").trim().toLowerCase();
@@ -696,6 +745,8 @@
         "</div>" +
         '<div class="tarjeta-acc">' +
           '<button type="button" class="btn btn-sm" data-editar-producto="' + esc(p.id) + '">Editar</button>' +
+          '<button type="button" class="btn btn-sm" data-duplicar-producto="' + esc(p.id) + '" ' +
+            'title="Crea un producto nuevo con los mismos datos, para no cargar todo de cero">Duplicar</button>' +
           '<button type="button" class="btn btn-sm btn-danger" data-borrar-producto="' + esc(p.id) + '">Borrar</button>' +
         "</div>" +
       "</article>";
@@ -704,14 +755,28 @@
 
   $("[data-buscar-productos]").addEventListener("input", vistaProductos);
 
-  function editorProducto(p) {
-    var nuevo = !p;
+  // Abre el editor con una copia del producto (mismas medidas, colores,
+  // fotos y precios), pero como si fuera nuevo: se guarda como un producto
+  // aparte, no pisa el original. Pensado para variantes muy parecidas
+  // (misma toalla en otro color, por ejemplo) sin recargar todo a mano.
+  function duplicarProducto(id) {
+    var p = prodPorId(id);
+    if (!p) return;
+    var copia = JSON.parse(JSON.stringify(p));
+    delete copia.id;
+    copia.nombre = (copia.nombre || "") + " (copia)";
+    editorProducto(copia, true);
+  }
+
+  function editorProducto(p, comoNuevo) {
+    var nuevo = !p || !!comoNuevo;
     p = p || { specs: [], colores: [], variantes: [], estampados: [], activo: true };
 
     var paleta = Object.keys(PALETA);
     (p.colores || []).forEach(function (c) { if (paleta.indexOf(c) < 0) paleta.push(c); });
 
     var cuerpo =
+      "<fieldset><legend>Datos del producto</legend>" +
       '<div class="campos">' +
         '<label class="ancho">Nombre' +
           '<input type="text" data-campo="nombre" value="' + esc(p.nombre || "") + '" required></label>' +
@@ -747,6 +812,7 @@
             (p.activo !== false ? " checked" : "") + "> Visible en la web</label>" +
         "</div>" +
       "</div>" +
+      "</fieldset>" +
 
       "<fieldset><legend>Foto principal</legend>" + fotoHTML(p.img, "img") + "</fieldset>" +
 
@@ -1260,6 +1326,8 @@
     var el;
     if ((el = e.target.closest("[data-editar-producto]")))
       return editorProducto(prodPorId(el.getAttribute("data-editar-producto")));
+    if ((el = e.target.closest("[data-duplicar-producto]")))
+      return duplicarProducto(el.getAttribute("data-duplicar-producto"));
     if ((el = e.target.closest("[data-borrar-producto]")))
       return borrarProducto(el.getAttribute("data-borrar-producto"));
     if ((el = e.target.closest("[data-editar-categoria]")))
@@ -1307,9 +1375,7 @@
       if (r.error) throw r.error;
       return entrar();
     }).catch(function (e2) {
-      err.textContent = /invalid login/i.test(detalle(e2))
-        ? "Mail o contraseña incorrectos."
-        : detalle(e2);
+      err.textContent = detalle(e2);
       err.hidden = false;
     }).then(function () {
       btn.disabled = false;
