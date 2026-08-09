@@ -1276,9 +1276,20 @@
   function initContacto() {
     var c = DATA.contacto || {};
     var vis = $("[data-wa-visible]"); if (vis) vis.textContent = c.whatsappVisible || "";
+    // El link lleva ícono adentro: si existe el <span> escribimos ahí, para no
+    // pisarlo con textContent.
     var mail = $("[data-mail]");
-    if (mail) { mail.textContent = c.email || ""; mail.href = "mailto:" + (c.email || ""); }
-    var ig = $("[data-ig]"); if (ig) ig.href = c.instagramUrl || "#";
+    if (mail) {
+      mail.href = "mailto:" + (c.email || "");
+      var mv = $("[data-mail-visible]", mail);
+      if (mv) mv.textContent = c.email || "Mail"; else mail.textContent = c.email || "";
+    }
+    var ig = $("[data-ig]");
+    if (ig) {
+      ig.href = c.instagramUrl || "#";
+      var iv = $("[data-ig-visible]", ig);
+      if (iv) iv.textContent = c.instagram ? "@" + c.instagram : "Instagram";
+    }
     var y = $("[data-year]"); if (y) y.textContent = new Date().getFullYear();
   }
 
