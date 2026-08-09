@@ -13,13 +13,13 @@
 <meta property="og:image" content="assets/img/hero-invierno.webp">
 <meta property="og:locale" content="es_AR">
 
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap">
-<link rel="preload" as="image" href="assets/img/hero-mobile.webp?v=2" media="(max-width: 719px)" fetchpriority="high">
-<link rel="preload" as="image" href="assets/img/hero-desktop.webp?v=2" media="(min-width: 720px)" fetchpriority="high">
-<link rel="stylesheet" href="styles.css?v=20260809e">
+<link rel="preload" as="image" href="/assets/img/hero-mobile.webp?v=2" media="(max-width: 719px)" fetchpriority="high">
+<link rel="preload" as="image" href="/assets/img/hero-desktop.webp?v=2" media="(min-width: 720px)" fetchpriority="high">
+<link rel="stylesheet" href="/styles.css?v=20260810d">
 </head>
 <body>
 
@@ -35,7 +35,7 @@
 
     <a class="brand" href="#top" aria-label="Sillorno, inicio">
       <span class="brand-mark">
-        <img src="assets/img/logo-mark.webp" alt="" width="512" height="512" decoding="async">
+        <img src="/assets/img/logo-mark.webp" alt="" width="512" height="512" decoding="async">
       </span>
       <span class="brand-txt">
         <span class="brand-word">Sillorno</span>
@@ -83,9 +83,9 @@
     <div class="hero-media">
       <picture>
         <!-- Desktop: dormitorio de piedra con textiles grises (horizontal) -->
-        <source media="(min-width: 720px)" srcset="assets/img/hero-desktop.webp?v=2">
+        <source media="(min-width: 720px)" srcset="/assets/img/hero-desktop.webp?v=2">
         <!-- Celular: dormitorio de piedra con textiles grises (vertical) -->
-        <img src="assets/img/hero-mobile.webp?v=2" alt="Dormitorio cálido vestido con blanquería de Sillorno" fetchpriority="high" decoding="async">
+        <img src="/assets/img/hero-mobile.webp?v=2" alt="Dormitorio cálido vestido con blanquería de Sillorno" fetchpriority="high" decoding="async">
       </picture>
     </div>
     <div class="hero-veil" aria-hidden="true"></div>
@@ -193,7 +193,7 @@
   <!-- ===========================================  EDITORIAL / CONFIANZA -->
   <section class="editorial reveal">
     <div class="editorial-media">
-      <img src="assets/img/lifestyle-bano.webp" alt="Toallones de algodón apilados" loading="lazy" decoding="async">
+      <img src="/assets/img/lifestyle-bano.webp" alt="Toallones de algodón apilados" loading="lazy" decoding="async">
     </div>
     <div class="editorial-text">
       <p class="kicker">Cómo compramos</p>
@@ -214,6 +214,13 @@
       <h2 class="sr-only" id="info-t">Cómo comprar</h2>
       <div class="info-row" data-info></div>
     </div>
+  </section>
+
+  <!-- ==============================================  FICHA DE PRODUCTO  -->
+  <!-- Es una página completa, no un panel encima: al abrirla, el CSS esconde
+       el resto del catálogo y quedan el header, la ficha y el footer. -->
+  <section class="pd-page" data-product-page hidden aria-label="Detalle del producto">
+    <div class="wrap" data-product-panel></div>
   </section>
 </main>
 
@@ -274,9 +281,9 @@
 </footer>
 
 <!-- ===============================================  FICHA DE PRODUCTO  -->
-<dialog class="sheet" data-product-dialog aria-label="Detalle del producto">
-  <div class="sheet-panel" data-product-panel></div>
-</dialog>
+<!-- Vive dentro de <main>, y cuando se abre el CSS esconde el resto del
+     catálogo. Así la ficha es una página de verdad: con el header arriba, el
+     footer abajo y scroll normal, en vez de un panel encima. -->
 
 <!-- =====================================================  CARRITO  -->
 <dialog class="drawer" data-cart-dialog aria-label="Mi pedido">
@@ -311,10 +318,10 @@
   </div>
 </noscript>
 
-<script defer src="lib/anime.min.js"></script>
-<script defer src="lib/manifest.js?v=20260809e"></script>
-<script defer src="lib/supabase-config.js?v=20260809e"></script>
-<script defer src="lib/data.js?v=20260809e"></script>
-<script defer src="main.js?v=20260809e"></script>
+<script defer src="/lib/anime.min.js"></script>
+<script defer src="/lib/manifest.js?v=20260810d"></script>
+<script defer src="/lib/supabase-config.js?v=20260810d"></script>
+<script defer src="/lib/data.js?v=20260810d"></script>
+<script defer src="/main.js?v=20260810d"></script>
 </body>
 </html>

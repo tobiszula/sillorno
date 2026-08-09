@@ -1230,3 +1230,37 @@ body.is-locked { overflow: hidden; }
   .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .hero { min-height: calc(92svh + var(--header-h)); }
 }
+
+/* ==============================================  FICHA COMO PÁGINA  ======
+   La ficha dejó de ser un panel encima: ahora es una página. Cuando está
+   abierta, el body lleva .is-producto y el resto del catálogo se esconde,
+   así quedan el header, la ficha y el footer, con scroll normal. */
+body.is-producto main > *:not(.pd-page) { display: none; }
+
+.pd-page { padding-block: clamp(1.2rem, 3vw, 2.2rem) clamp(2.5rem, 5vw, 4rem); }
+
+/* Migas de pan */
+.pd-migas {
+  display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
+  font-size: .76rem; color: var(--cream-3);
+  margin-bottom: clamp(1rem, 2.5vw, 1.6rem);
+}
+.pd-migas a { color: var(--cream-3); transition: color .3s var(--ease-out); }
+.pd-migas a:hover { color: var(--wine-soft); }
+.pd-migas-actual { color: var(--cream-2); }
+
+/* En página, la ficha respira: la foto ya no está pegada al borde */
+.pd-page .pd { border-radius: var(--radius); overflow: hidden; }
+.pd-page .pd-media { max-height: none; aspect-ratio: 4 / 5; }
+.pd-page .pd-close { position: absolute; top: .6rem; right: .6rem; z-index: 3; }
+
+@media (min-width: 720px) {
+  .pd-page .pd { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem, 3vw, 3rem); align-items: start; }
+  /* Las migas van arriba de todo, cruzando las dos columnas: si no, el
+     grid las toma como una celda más y descoloca foto y datos. */
+  .pd-page .pd-migas { grid-column: 1 / -1; }
+  .pd-page .pd-media { min-height: 0; height: auto; }
+  .pd-page .pd-body { padding: 0; }
+  /* El botón de volver ya no hace falta arriba de la foto: están las migas */
+  .pd-page .pd-close { display: none; }
+}

@@ -554,7 +554,9 @@
     // Cualquier otra URL absoluta (Supabase Storage, por ejemplo) se deja igual.
     if (/^(https?:)?\/\//i.test(u) || u.indexOf("data:") === 0) return u;
 
-    if (!CLOUD) return u;                       // sin Cloudinary: ruta local
+    // Absoluta: en /producto/algo una ruta relativa se resolvería contra
+    // /producto/ y la foto daría 404.
+    if (!CLOUD) return u.charAt(0) === "/" ? u : "/" + u;
 
     // assets/img/toallon-icone.webp -> sillorno/toallon-icone
     var nombre = u.replace(/^\/?assets\/img\//, "").replace(/\.[a-z0-9]+$/i, "");
@@ -709,7 +711,14 @@
                   : (agotado ? "Sin stock por ahora" : "Disponible");
 
     return '<div class="pd">' +
-      '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
+      '<nav class="pd-migas" aria-label="Dónde estoy">' +
+        '<a href="/" data-close-product>Inicio</a>' +
+        '<span aria-hidden="true">›</span>' +
+        '<a href="/#catalogo" data-close-product>Catálogo</a>' +
+        '<span aria-hidden="true">›</span>' +
+        '<span class="pd-migas-actual">' + esc(p.nombre) + '</span>' +
+      '</nav>' +
+      '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Volver al catálogo">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '<div class="pd-media" data-pd-swipe>' +
         '<img class="pd-fondo" src="' + esc(foto(img, 400)) + '" alt="" aria-hidden="true" data-pd-fondo>' +
@@ -827,6 +836,44 @@
     return q ? decodeURIComponent(q[1]) : null;
   }
 
+  /* La ficha ocupa toda la pantalla: escondemos el catálogo (lo hace el CSS
+     con la clase del body) y dejamos header, ficha y footer. El historial se
+     maneja igual que los paneles, así el botón atrás vuelve al catálogo. */
+  var scrollCatalogo = 0;
+
+  function abrirPaginaProducto(url) {
+    var pg = $("[data-product-page]"); if (!pg) return;
+    if (!document.body.classList.contains("is-producto")) {
+      scrollCatalogo = window.scrollY;
+      pushOverlay(cerrarPaginaProducto, url);
+    } else if (url) {
+      history.replaceState(history.state, "", url);
+    }
+    pg.hidden = false;
+    document.body.classList.add("is-producto");
+    window.scrollTo(0, 0);
+  }
+
+  function cerrarPaginaProducto() {
+    var pg = $("[data-product-page]"); if (!pg) return;
+    pg.hidden = true;
+    document.body.classList.remove("is-producto");
+    document.title = TITULO_BASE;
+    window.scrollTo(0, scrollCatalogo);
+  }
+
+  // Cierre desde la UI (botón volver): saca también la entrada del historial.
+  function cerrarProductoDesdeUI() {
+    if (!document.body.classList.contains("is-producto")) return;
+    var idx = overlayStack.lastIndexOf(cerrarPaginaProducto);
+    cerrarPaginaProducto();
+    if (idx >= 0) {
+      overlayStack.splice(idx, 1);
+      overlayProgrammaticPop = true;
+      history.back();
+    }
+  }
+
   function openProduct(pid) {
     var p = byId(pid); if (!p) return;
     var primera = (p.variantes || []).filter(function (v) { return v.stock !== "agotado"; })[0] || p.variantes[0];
@@ -839,7 +886,7 @@
       qty: 1
     };
     renderProduct();
-    openDialog($("[data-product-dialog]"), urlProducto(pid));
+    abrirPaginaProducto(urlProducto(pid));
     document.title = p.nombre + " · Sillorno";
     precargarFotos(p);
   }
@@ -905,7 +952,6 @@
 
   function closeDialog(dlg, fromBack) {
     if (!dlg || !dlg.open) return;
-    if (dlg === $("[data-product-dialog]")) document.title = TITULO_BASE;
     dlg.classList.remove("is-open");
     setTimeout(function () {
       if (dlg.open) dlg.close();
@@ -1204,7 +1250,19 @@
         }
         return;
       }
-      if (e.target.closest("[data-close-product]")) { closeDialog($("[data-product-dialog]")); return; }
+      if ((el = e.target.closest("[data-close-product]"))) {
+        // Las migas son links de verdad (para SEO y para abrir en pestaña
+        // nueva), así que hay que frenar la navegación en el clic normal.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        var aCatalogo = (el.getAttribute("href") || "").indexOf("#catalogo") >= 0;
+        cerrarProductoDesdeUI();
+        if (aCatalogo) {
+          var cat = $("#catalogo");
+          if (cat) window.scrollTo({ top: cat.getBoundingClientRect().top + window.scrollY - 8 });
+        }
+        return;
+      }
 
       // Galería: la flechita pasa a la foto siguiente/anterior.
       if ((el = e.target.closest("[data-photo-nav]"))) {
@@ -1258,7 +1316,7 @@
       if (e.target.closest("[data-add-cart]")) {
         var prod = byId(pdState.pid); if (!prod) return;
         cartAdd(pdState.pid, pdState.medida, pdState.estampado, pdState.color, pdState.qty);
-        closeDialog($("[data-product-dialog]"));
+        cerrarProductoDesdeUI();
         toast(prod.nombre + " agregado al pedido");
         return;
       }
