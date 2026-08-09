@@ -679,7 +679,7 @@
     var stockText = v.stock === "ultimas" ? "Últimas unidades"
                   : (agotado ? "Sin stock por ahora" : "Disponible");
 
-    return '<div class="pd">' +
+    return '<div class="pd" data-pd-id="' + esc(p.id) + '">' +
       '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '<div class="pd-media" data-pd-swipe><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
