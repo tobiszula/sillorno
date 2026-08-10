@@ -768,11 +768,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 }
 .pd-media img { width: 100%; height: 100%; object-fit: cover; transition: opacity .28s var(--ease-out); }
 
-/* Frazada Neo Velour: la foto en sí ya es 4/5 exacto. El problema era el
+/* Frazadas y mantas: las tres fotos ya son 4/5 exacto. El problema era el
    marco, que en pantallas bajas se achica con max-height y deja de ser 4/5
-   — ahí cualquier recorte queda mal. Sólo para este producto, el marco
+   — ahí cualquier recorte queda mal. Sólo para estos productos, el marco
    respeta su proporción real en vez de la altura disponible. */
-.pd[data-pd-id="frazada-velour"] .pd-media {
+.pd[data-pd-id="frazada-velour"] .pd-media,
+.pd[data-pd-id="frazada-microfibra"] .pd-media,
+.pd[data-pd-id="manta-outlet"] .pd-media {
   aspect-ratio: 4 / 5;
   max-height: none;
   height: auto;
