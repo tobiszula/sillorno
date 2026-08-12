@@ -1131,6 +1131,19 @@
         if (cat0) window.scrollTo({ top: cat0.getBoundingClientRect().top + window.scrollY - 8, behavior: "smooth" });
         return;
       }
+      // Links a "#categorias" (hero, footer, header): saltamos directo a las
+      // tarjetas, no al título de la sección. El título ocupa ~100px que en
+      // celular empujaban la tarjeta de "Sets" (la última) casi entera fuera
+      // de la pantalla.
+      if ((el = e.target.closest('a[href="#categorias"]'))) {
+        var tiles = $("[data-cats]");
+        if (tiles) {
+          e.preventDefault();
+          window.scrollTo({ top: tiles.getBoundingClientRect().top + window.scrollY - 8, behavior: "smooth" });
+          history.pushState(null, "", "#categorias");
+        }
+        return;
+      }
       if ((el = e.target.closest("[data-cat-link]"))) {
         e.preventDefault(); setCategoria(el.getAttribute("data-cat-link")); return;
       }
