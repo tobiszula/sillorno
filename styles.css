@@ -492,7 +492,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   .cats-list {
     display: grid;
     grid-template-columns: 1.35fr 1fr 1fr;
-    grid-template-rows: repeat(2, clamp(200px, 24vw, 320px)) clamp(90px, 12vw, 130px);
+    grid-template-rows: repeat(2, clamp(200px, 24vw, 320px)) clamp(160px, 16vw, 220px);
     gap: .5rem;
   }
   .cat-banner { height: auto; }
@@ -524,6 +524,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   .cat-banner:nth-child(1) .cat-banner-txt { padding: 1.6rem; }
   .cat-banner:nth-child(1) .cat-banner-txt::before { width: 40px; margin-bottom: .7rem; }
   .cat-banner:nth-child(1) .cat-banner-name { font-size: 1.7rem; }
+
+  /* Sets ya no es una franja chata: le damos el mismo peso visual que la
+     categoría destacada, así el tamaño nuevo no queda con aire de sobra. */
+  .cats-list a.cat-banner .cat-banner-txt { padding: 1.6rem; }
+  .cats-list a.cat-banner .cat-banner-txt::before { width: 40px; margin-bottom: .7rem; }
+  .cats-list a.cat-banner .cat-banner-name { font-size: 1.5rem; }
+  .cats-list a.cat-banner .cat-banner-sub { font-size: .88rem; margin-top: .3rem; }
 
   /* El tile "Ver todo" se reemplaza por el link de arriba */
   .cat-all { display: none; }
