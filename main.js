@@ -295,6 +295,13 @@
     box.innerHTML = COMBOS.map(function (c) {
       var pr = comboPrecios(c);
       if (!pr.full) return "";
+      // Cuenta cuántas veces aparece cada producto en el set: sólo ahí hace
+      // falta aclarar el detalle (ej. "Toallón" vs. "Toalla de mano"), si no
+      // se repite no hay nada que distinguir y el detalle sólo agrega ruido.
+      var repetidos = {};
+      (c.items || []).forEach(function (it) {
+        repetidos[it.producto] = (repetidos[it.producto] || 0) + 1;
+      });
       var lista = (c.items || []).map(function (it, idx) {
         var p = byId(it.producto);
         if (!p) return "";
@@ -308,7 +315,12 @@
               "</button>";
           }).join("") + "</span>";
         }
-        return "<li>" + esc(p.nombre) + " · " + esc(it.medida) +
+        var detSet = "";
+        if (repetidos[it.producto] > 1) {
+          var vSet = variante(p, it.medida);
+          if (vSet && vSet.detalle) detSet = " (" + esc(vSet.detalle) + ")";
+        }
+        return "<li>" + esc(p.nombre) + detSet + " · " + esc(it.medida) +
                (it.cantidad > 1 ? " ×" + it.cantidad : "") + swatches + "</li>";
       }).join("");
       return '<article class="combo reveal">' +
