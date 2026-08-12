@@ -782,7 +782,9 @@
           '<input type="text" data-campo="nombre" value="' + esc(p.nombre || "") + '" required></label>' +
 
         "<label>Categoría<select data-campo=\"categoria\">" +
-          CATS.map(function (c) {
+          // "sets" es una fila especial (da el nombre/foto del banner de Sets
+          // en la home), no una categoría real: un producto no se asigna ahí.
+          CATS.filter(function (c) { return c.id !== "sets"; }).map(function (c) {
             return '<option value="' + esc(c.id) + '"' +
                    (c.id === p.categoria_id ? " selected" : "") + ">" + esc(c.nombre) + "</option>";
           }).join("") + "</select></label>" +
@@ -1010,15 +1012,19 @@
       return;
     }
     $("[data-lista-categorias]").innerHTML = '<div class="tarjetas">' + CATS.map(function (c) {
-      var n = PRODS.filter(function (p) { return p.categoria_id === c.id; }).length;
+      // "sets" es la fila especial del banner de Sets en la home: no tiene
+      // productos propios, así que no tiene sentido contarlos acá.
+      var esSets = c.id === "sets";
+      var n = esSets ? 0 : PRODS.filter(function (p) { return p.categoria_id === c.id; }).length;
       return '<article class="tarjeta">' +
         '<img src="' + esc(verFoto(c.img)) + '" alt="" loading="lazy">' +
         '<div class="tarjeta-txt">' +
           '<div class="tarjeta-nom">' + esc(c.nombre) +
             (c.activo ? "" : '<span class="pill pill-off">Oculta</span>') + "</div>" +
           '<div class="tarjeta-meta">' + esc(c.corto || "") +
-            (c.sub ? " · " + esc(c.sub) : "") + " · " + n +
-            " producto" + (n === 1 ? "" : "s") + "</div>" +
+            (c.sub ? " · " + esc(c.sub) : "") +
+            (esSets ? " · banner de la sección Sets" : " · " + n + " producto" + (n === 1 ? "" : "s")) +
+          "</div>" +
         "</div>" +
         '<div class="tarjeta-acc">' +
           '<button type="button" class="btn btn-sm" data-editar-categoria="' + esc(c.id) + '">Editar</button>' +

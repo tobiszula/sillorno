@@ -194,25 +194,36 @@
   /* ==========================================================  RENDERIZAR */
   function mountCats() {
     var box = $("[data-cats]"); if (!box) return;
-    var tiles = CATEGORIAS.map(function (c) {
-      return '<button class="cat-banner" type="button" data-cat-tile="' + esc(c.id) + '" ' +
-             'aria-label="Ver ' + esc(c.nombre) + '">' +
-             '<img src="' + esc(foto(c.img, 720)) + '" alt="" loading="lazy" decoding="async">' +
-             '<span class="cat-banner-txt">' +
-               '<span class="cat-banner-name">' + esc(c.corto || c.nombre) + '</span>' +
-               (c.sub ? '<span class="cat-banner-sub">' + esc(c.sub) + '</span>' : '') +
-             '</span></button>';
-    });
+    // "sets" es una fila especial en categorías (da nombre/foto/bajada del
+    // banner de abajo, editable desde el panel), no una categoría de
+    // producto real: se arma aparte y nunca entra en la grilla de tiles.
+    var setsCat = CATEGORIAS.filter(function (c) { return c.id === "sets"; })[0];
+    var tiles = CATEGORIAS
+      .filter(function (c) { return c.id !== "sets"; })
+      .map(function (c) {
+        return '<button class="cat-banner" type="button" data-cat-tile="' + esc(c.id) + '" ' +
+               'aria-label="Ver ' + esc(c.nombre) + '">' +
+               '<img src="' + esc(foto(c.img, 720)) + '" alt="" loading="lazy" decoding="async">' +
+               '<span class="cat-banner-txt">' +
+                 '<span class="cat-banner-name">' + esc(c.corto || c.nombre) + '</span>' +
+                 (c.sub ? '<span class="cat-banner-sub">' + esc(c.sub) + '</span>' : '') +
+               '</span></button>';
+      });
     // Sets armados: no es una categoría de producto, así que en vez de filtrar
     // el catálogo lleva directo a la sección de combos. Ocupa un banner ancho
     // propio, aparte de la grilla de categorías (ver .cat-banner:last-child).
-    if (COMBOS.length) {
+    if (COMBOS.length && (!setsCat || setsCat.activo !== false)) {
       // Foto de ambiente (no de un producto suelto): en la franja ancha del
-      // banner, una foto de producto recortada queda irreconocible.
+      // banner, una foto de producto recortada queda irreconocible. Si el
+      // panel todavía no tiene la fila "sets" cargada, usamos estos valores
+      // de siempre como respaldo.
+      var setsImg = (setsCat && setsCat.img) || "assets/img/lifestyle-cama.webp";
+      var setsNombre = (setsCat && (setsCat.corto || setsCat.nombre)) || "Sets";
+      var setsSub = (setsCat && setsCat.sub) || "Combos con descuento";
       tiles.push('<a class="cat-banner" href="#combos" aria-label="Ver sets armados">' +
-        '<img src="' + esc(foto("assets/img/lifestyle-cama.webp", 1200)) + '" alt="" loading="lazy" decoding="async">' +
-        '<span class="cat-banner-txt"><span class="cat-banner-name">Sets</span>' +
-        '<span class="cat-banner-sub">Combos con descuento</span></span></a>');
+        '<img src="' + esc(foto(setsImg, 1200)) + '" alt="" loading="lazy" decoding="async">' +
+        '<span class="cat-banner-txt"><span class="cat-banner-name">' + esc(setsNombre) + '</span>' +
+        (setsSub ? '<span class="cat-banner-sub">' + esc(setsSub) + '</span>' : '') + '</span></a>');
     }
     box.innerHTML = tiles.join("");
   }
