@@ -472,9 +472,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 .cat-banner.is-active { border-color: var(--gold); }
 .cat-banner.is-active img { filter: saturate(1) brightness(.78); }
 
-/* DESKTOP (≥720px): una categoría destacada (la más fuerte) grande a la
-   izquierda + el resto en una grilla 2x2 a la derecha. "Ver todo" deja de
-   ser un tile y pasa a ser un link junto al título. */
+/* DESKTOP (≥720px): seis tarjetas parejas (5 categorías + Sets) en una
+   grilla de 3x2, todas del mismo tamaño. "Ver todo" deja de ser un tile y
+   pasa a ser un link junto al título. */
 @media (min-width: 720px) {
   .cats-head {
     display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem;
@@ -491,23 +491,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
 
   .cats-list {
     display: grid;
-    grid-template-columns: 1.35fr 1fr 1fr;
-    grid-template-rows: repeat(2, clamp(200px, 24vw, 320px)) clamp(160px, 16vw, 220px);
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, clamp(220px, 22vw, 300px));
     gap: .5rem;
   }
   .cat-banner { height: auto; }
-  .cat-banner:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; }
-  .cat-banner:nth-child(2) { grid-column: 2; grid-row: 1; }
-  .cat-banner:nth-child(3) { grid-column: 3; grid-row: 1; }
-  .cat-banner:nth-child(4) { grid-column: 2; grid-row: 2; }
-  .cat-banner:nth-child(5) { grid-column: 3; grid-row: 2; }
-  /* "Sets" es el único banner con <a> en vez de <button>: banner ancho
-     propio abajo de las categorías, para que no se pierda entre las demás. */
-  .cats-list a.cat-banner { grid-column: 1 / -1; grid-row: 3; }
-  .cats-list a.cat-banner .cat-banner-sub {
-    display: block; font-family: var(--sans); font-size: .78rem;
-    color: var(--cream-2); font-weight: 400; margin-top: .2rem;
-  }
   .cat-banner::after { background: linear-gradient(180deg, transparent 45%, rgba(16, 11, 9, .88) 100%); }
   .cat-banner-txt { left: 0; right: 0; top: auto; bottom: 0; transform: none; padding: 1.1rem 1.2rem; }
   .cat-banner-txt::before {
@@ -519,18 +507,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   }
   .cat-banner-sub { display: none; }
   .cat-banner.is-active { border-color: var(--wine-soft); }
-
-  /* Categoría destacada: más grande y con más aire */
-  .cat-banner:nth-child(1) .cat-banner-txt { padding: 1.6rem; }
-  .cat-banner:nth-child(1) .cat-banner-txt::before { width: 40px; margin-bottom: .7rem; }
-  .cat-banner:nth-child(1) .cat-banner-name { font-size: 1.7rem; }
-
-  /* Sets ya no es una franja chata: le damos el mismo peso visual que la
-     categoría destacada, así el tamaño nuevo no queda con aire de sobra. */
-  .cats-list a.cat-banner .cat-banner-txt { padding: 1.6rem; }
-  .cats-list a.cat-banner .cat-banner-txt::before { width: 40px; margin-bottom: .7rem; }
-  .cats-list a.cat-banner .cat-banner-name { font-size: 1.5rem; }
-  .cats-list a.cat-banner .cat-banner-sub { font-size: .88rem; margin-top: .3rem; }
 
   /* El tile "Ver todo" se reemplaza por el link de arriba */
   .cat-all { display: none; }
