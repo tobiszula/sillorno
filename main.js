@@ -1030,7 +1030,13 @@
         setNavOpen(!sheet.classList.contains("is-open"));
       });
       sheet.addEventListener("click", function (e) {
-        if (e.target.closest("a")) setNavOpen(false);
+        // Al tocar un link real (categoría, etc.) cerramos sin pasar por
+        // popOverlay/history.back(): ese history.back() es async y su
+        // restauración de scroll del navegador pisaba el scroll a la
+        // categoría que dispara setCategoria() más abajo, en el handler
+        // delegado de [data-cat-link]. El segundo argumento (normalmente
+        // "vino del botón atrás") acá se reusa sólo para saltear ese pop.
+        if (e.target.closest("a")) setNavOpen(false, true);
       });
     }
   }
