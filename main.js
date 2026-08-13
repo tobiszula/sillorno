@@ -536,13 +536,34 @@
     mountFiltros(); aplicar(true);
   }
 
+  /* Scroll por código, a prueba de navegadores.
+     El CSS tiene scroll-behavior: smooth y, combinado con el overflow-x: clip
+     del html, hay navegadores donde el scroll suave por código simplemente no
+     arranca: se tocaba una categoría, el filtro se aplicaba y la página no se
+     movía. Si a los 300ms no se movió ni un pixel, lo hacemos sin animación. */
+  function irA(top) {
+    var y = Math.max(0, Math.round(top));
+    var desde = window.scrollY;
+    if (Math.abs(y - desde) < 4) return;
+    // Ojo: scrollTo(0, y) a secas TAMBIÉN obedece al scroll-behavior del CSS,
+    // así que el respaldo tiene que pedir "instant" explícito.
+    var yaEsta = function () {
+      window.scrollTo({ top: y, behavior: "instant" });
+    };
+    try { window.scrollTo({ top: y, behavior: "smooth" }); }
+    catch (e) { yaEsta(); return; }
+    setTimeout(function () {
+      if (window.scrollY === desde) yaEsta();
+    }, 300);
+  }
+
   function setCategoria(id) {
     state.cats = state.cats.length === 1 && state.cats[0] === id ? [] : [id];
     mountFiltros(); aplicar(true);
     var cat = $("#catalogo");
     if (cat) {
       var top = cat.getBoundingClientRect().top + window.scrollY - 8;
-      window.scrollTo({ top: top, behavior: "smooth" });
+      irA(top);
     }
   }
 
@@ -1145,7 +1166,7 @@
       if (e.target.closest("[data-cat-all]")) {
         limpiarFiltros();
         var cat0 = $("#catalogo");
-        if (cat0) window.scrollTo({ top: cat0.getBoundingClientRect().top + window.scrollY - 8, behavior: "smooth" });
+        if (cat0) irA(cat0.getBoundingClientRect().top + window.scrollY - 8);
         return;
       }
       // Links a "#categorias" (hero, footer, header): saltamos directo a las
@@ -1156,7 +1177,7 @@
         var tiles = $("[data-cats]");
         if (tiles) {
           e.preventDefault();
-          window.scrollTo({ top: tiles.getBoundingClientRect().top + window.scrollY - 8, behavior: "smooth" });
+          irA(tiles.getBoundingClientRect().top + window.scrollY - 8);
           history.pushState(null, "", "#categorias");
         }
         return;
@@ -1293,7 +1314,7 @@
         e.preventDefault();
         var input = $("[data-search]");
         var cat = $("#catalogo");
-        if (cat) window.scrollTo({ top: cat.getBoundingClientRect().top + window.scrollY - 8, behavior: "smooth" });
+        if (cat) irA(cat.getBoundingClientRect().top + window.scrollY - 8);
         if (input) setTimeout(function () { input.focus(); }, 380);
         return;
       }
