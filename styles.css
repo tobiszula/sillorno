@@ -1146,3 +1146,12 @@ body.is-locked { overflow: hidden; }
   .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .hero { min-height: calc(92svh + var(--header-h)); }
 }
+
+/* Áreas de toque: el + de las tarjetas quedaba en 34px y el nombre en 21px
+   de alto. Abajo de ~40px se falla el toque seguido en celular. */
+@media (max-width: 719px) {
+  .card-add { width: 40px; height: 40px; }
+  .card-name a, .card-name button { display: inline-block; padding-block: .25rem; }
+  .hero-link { padding-block: .5rem; }
+}
+

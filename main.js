@@ -1321,6 +1321,9 @@
 
       // WhatsApp general
       if ((el = e.target.closest("[data-wa-general]"))) {
+        // Si es un link con su href ya puesto, lo deja pasar: la navegación
+        // nativa no la frena ningún bloqueador de pop-ups.
+        if (el.tagName === "A" && (el.getAttribute("href") || "#") !== "#") return;
         e.preventDefault();
         window.open(waLink("¡Hola Sillorno! Quería consultarles por la blanquería."), "_blank", "noopener");
         return;
@@ -1339,6 +1342,19 @@
   function initContacto() {
     var c = DATA.contacto || {};
     var vis = $("[data-wa-visible]"); if (vis) vis.textContent = c.whatsappVisible || "";
+
+    /* Los botones de WhatsApp tenían href="#" y abrían con window.open desde
+       el handler. Eso es frágil: en iOS lo puede frenar el bloqueador de
+       pop-ups, no se puede compartir el link con pulsación larga y, si el JS
+       falla, el botón queda muerto. Es el camino de venta principal del
+       sitio, así que va como link de verdad. */
+    var waHref = waLink("¡Hola Sillorno! Quería consultarles por la blanquería.");
+    $$("[data-wa-general]").forEach(function (a) {
+      if (a.tagName !== "A") return;
+      a.href = waHref;
+      a.target = "_blank";
+      a.rel = "noopener";
+    });
     // El link lleva ícono adentro: si existe el <span> escribimos ahí, para no
     // pisarlo con textContent.
     var mail = $("[data-mail]");
