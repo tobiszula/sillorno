@@ -1155,3 +1155,27 @@ body.is-locked { overflow: hidden; }
   .hero-link { padding-block: .5rem; }
 }
 
+
+/* ================================================  CÓDIGO DE DESCUENTO  ==
+   Va en el pie del carrito, arriba del total. */
+.cupon { display: grid; gap: .5rem; margin-bottom: .9rem; }
+.cupon-fila { display: flex; gap: .5rem; }
+.cupon-fila input {
+  flex: 1; min-width: 0;
+  background: var(--bg-3); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .7rem .8rem;
+  font-size: .88rem; text-transform: uppercase; letter-spacing: .04em;
+}
+.cupon-fila input::placeholder { text-transform: none; letter-spacing: 0; color: var(--cream-3); }
+.cupon-fila input:focus { outline: none; border-color: var(--wine-soft); background: var(--bg-4); }
+.cupon-fila .btn { flex: none; padding-inline: 1.1rem; }
+
+.cupon-msg { font-size: .78rem; color: var(--ok); }
+.cupon-msg.is-error { color: #D97A7A; }
+
+/* El total tachado cuando hay descuento, y el total final destacado */
+.drawer-total-desc { color: var(--ok); font-size: .86rem; align-items: baseline; }
+.drawer-total-desc span { min-width: 0; }
+/* nowrap: si no, el "−" se corta del monto y queda en su propio renglón */
+.drawer-total-desc strong { color: var(--ok); font-weight: 500; white-space: nowrap; }
+.drawer-total-final strong { color: var(--wine-soft); }

@@ -959,6 +959,8 @@
     }
 
     if (foot) foot.hidden = !cart.length;
+    if (!cart.length && cupon) quitarCupon();   // carrito vacío: se cae el código
+    pintarDescuento();
     var t = $("[data-cart-total]"); if (t) t.textContent = money(total);
 
     var badge = $("[data-cart-count]");
@@ -991,6 +993,113 @@
     return "https://wa.me/" + tel + "?text=" + encodeURIComponent(texto);
   }
 
+  /* ==================================================== CÓDIGO DE DESCUENTO =
+     El código se valida contra la base con validar_codigo(): esa función
+     devuelve el descuento de UN código, nunca la lista. Si la lista fuera
+     legible, cualquiera podría pedirle todos los códigos a la API.
+
+     Sin base de datos configurada no hay códigos: el campo avisa y listo. */
+  var cupon = null;   // { codigo, tipo, valor, descripcion }
+
+  function descuentoMonto() {
+    if (!cupon) return 0;
+    var total = cartTotal();
+    var d = cupon.tipo === "monto"
+      ? Number(cupon.valor)
+      : total * (Number(cupon.valor) / 100);
+    // Nunca puede dejar el total en negativo.
+    return Math.min(total, Math.max(0, Math.round(d)));
+  }
+
+  function totalConDescuento() {
+    return Math.max(0, cartTotal() - descuentoMonto());
+  }
+
+  function cuponMensaje(txt, esError) {
+    var el = $("[data-cupon-msg]");
+    if (!el) return;
+    if (!txt) { el.hidden = true; return; }
+    el.textContent = txt;
+    el.classList.toggle("is-error", !!esError);
+    el.hidden = false;
+  }
+
+  function pintarDescuento() {
+    var lineaD = $("[data-linea-descuento]");
+    var lineaF = $("[data-linea-final]");
+    if (!lineaD || !lineaF) return;
+
+    var d = descuentoMonto();
+    if (!cupon || d <= 0) {
+      lineaD.hidden = true; lineaF.hidden = true;
+      return;
+    }
+    var lbl = $("[data-desc-label]");
+    if (lbl) {
+      lbl.textContent = "Descuento (" + cupon.codigo + ")" +
+        (cupon.tipo === "porcentaje" ? " · " + (+cupon.valor) + "%" : "");
+    }
+    var m = $("[data-desc-monto]"); if (m) m.textContent = "− " + money(d);
+    var f = $("[data-cart-final]"); if (f) f.textContent = money(totalConDescuento());
+    lineaD.hidden = false; lineaF.hidden = false;
+  }
+
+  function quitarCupon() {
+    cupon = null;
+    var i = $("[data-cupon]"); if (i) i.value = "";
+    var b = $("[data-cupon-aplicar]"); if (b) b.textContent = "Aplicar";
+    cuponMensaje("");
+    pintarDescuento();
+  }
+
+  function aplicarCupon() {
+    var input = $("[data-cupon]"); if (!input) return;
+    if (cupon) { quitarCupon(); return; }
+
+    var codigo = String(input.value || "").trim().toUpperCase();
+    if (!codigo) { cuponMensaje("Escribí un código.", true); return; }
+
+    var cfg = window.__SUPABASE__ || {};
+    if (!cfg.url || !cfg.anonKey) {
+      cuponMensaje("Los códigos no están disponibles ahora.", true);
+      return;
+    }
+
+    var btn = $("[data-cupon-aplicar]");
+    if (btn) { btn.disabled = true; btn.textContent = "…"; }
+    cuponMensaje("");
+
+    fetch(String(cfg.url).replace(/\/+$/, "") + "/rest/v1/rpc/validar_codigo", {
+      method: "POST",
+      headers: {
+        "apikey": cfg.anonKey,
+        "Authorization": "Bearer " + cfg.anonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_codigo: codigo }),
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function (j) {
+      if (!j || !j.codigo) {
+        cuponMensaje("Ese código no existe o ya no está disponible.", true);
+        return;
+      }
+      cupon = j;
+      input.value = j.codigo;
+      cuponMensaje("Código aplicado: " + (j.tipo === "monto"
+        ? money(j.valor) + " de descuento"
+        : (+j.valor) + "% de descuento"), false);
+      if (btn) btn.textContent = "Quitar";
+      pintarDescuento();
+    }).catch(function () {
+      cuponMensaje("No pudimos validar el código. Probá de nuevo.", true);
+    }).then(function () {
+      if (btn) btn.disabled = false;
+      if (!cupon && btn) btn.textContent = "Aplicar";
+    });
+  }
+
   function checkout() {
     if (!cart.length) return;
     var lineas = cart.map(function (it) {
@@ -1016,8 +1125,37 @@
     }).filter(Boolean).join("\n\n");
 
     var texto = "¡Hola Sillorno! Quiero hacer este pedido:\n\n" + lineas +
-      "\n\nTotal: " + money(cartTotal()) +
-      "\n\nMis datos:\nNombre: \nLocalidad / zona de envío: ";
+      "\n\nTotal: " + money(cartTotal());
+
+    // Si hay código aplicado, va en el mensaje para que el vendedor lo vea.
+    var desc = descuentoMonto();
+    if (cupon && desc > 0) {
+      texto += "\nCódigo de descuento: " + cupon.codigo +
+               " (" + (cupon.tipo === "monto" ? money(cupon.valor) : (+cupon.valor) + "%") + ")" +
+               "\nTotal con descuento: " + money(totalConDescuento());
+    }
+
+    texto += "\n\nMis datos:\nNombre: \nLocalidad / zona de envío: ";
+
+    // Le sumamos un uso al código, sólo para que el dueño vea cuánto se usa.
+    // Si falla no importa: el pedido igual se manda.
+    if (cupon && desc > 0) {
+      var cfg = window.__SUPABASE__ || {};
+      if (cfg.url && cfg.anonKey) {
+        try {
+          fetch(String(cfg.url).replace(/\/+$/, "") + "/rest/v1/rpc/usar_codigo", {
+            method: "POST",
+            headers: {
+              "apikey": cfg.anonKey,
+              "Authorization": "Bearer " + cfg.anonKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ p_codigo: cupon.codigo }),
+            keepalive: true,
+          }).catch(function () {});
+        } catch (e) { /* no frena el pedido */ }
+      }
+    }
 
     window.open(waLink(texto), "_blank", "noopener");
   }
@@ -1307,6 +1445,7 @@
         return;
       }
       if ((el = e.target.closest("[data-cdel]"))) { cartSet(el.getAttribute("data-cdel"), 0); return; }
+      if (e.target.closest("[data-cupon-aplicar]")) { aplicarCupon(); return; }
       if (e.target.closest("[data-checkout]")) { checkout(); return; }
 
       // Buscador desde el header
@@ -1336,6 +1475,18 @@
       dlg.addEventListener("click", function (e) {
         if (e.target === dlg) closeDialog(dlg);
       });
+    });
+  }
+
+  function initCupon() {
+    var i = $("[data-cupon]");
+    if (!i) return;
+    i.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); aplicarCupon(); }
+    });
+    // Si edita el código después de aplicarlo, se suelta el descuento.
+    i.addEventListener("input", function () {
+      if (cupon && i.value.trim().toUpperCase() !== cupon.codigo) quitarCupon();
     });
   }
 
@@ -1434,6 +1585,7 @@
     safe(initCatalogo, "initCatalogo");
     safe(initClicks, "initClicks");
     safe(initContacto, "initContacto");
+    safe(initCupon, "initCupon");
 
     safe(function () { aplicar(false); }, "aplicar");
     safe(renderCart, "renderCart");

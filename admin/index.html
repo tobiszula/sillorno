@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
 <!-- Rutas absolutas a propósito: si se entra a /admin (sin la barra final),
      las rutas relativas se resuelven contra la raíz y no cargan nada. -->
-<link rel="stylesheet" href="/admin/admin.css?v=20260809a">
+<link rel="stylesheet" href="/admin/admin.css?v=20260814b">
 </head>
 <body>
 
@@ -80,6 +80,7 @@
         <button type="button" class="tab" data-tab="precios">Precios</button>
         <button type="button" class="tab" data-tab="categorias">Categorías</button>
         <button type="button" class="tab" data-tab="sets">Sets</button>
+        <button type="button" class="tab" data-tab="config">Configuración</button>
       </nav>
       <div class="top-acc">
         <a class="btn btn-ghost" href="/" target="_blank" rel="noopener">Ver la web</a>
@@ -155,6 +156,21 @@
       <div data-lista-sets></div>
     </section>
 
+    <!-- ------------------------------------------------ CONFIGURACIÓN -->
+    <section class="vista" data-vista="config" hidden>
+      <div class="vista-head">
+        <div>
+          <h2>Códigos de descuento</h2>
+          <p class="hint">El cliente los escribe en el carrito y el descuento
+            aparece en el mensaje de WhatsApp.</p>
+        </div>
+        <div class="vista-acc">
+          <button type="button" class="btn btn-primary" data-nuevo-codigo>+ Nuevo código</button>
+        </div>
+      </div>
+      <div data-lista-codigos></div>
+    </section>
+
     <p class="firma firma-pie">Hecho por <span>Koda</span></p>
   </main>
 </div>
@@ -178,8 +194,8 @@
 <div class="toast" data-toast hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/lib/supabase-config.js?v=20260805b"></script>
-<script src="/lib/manifest.js?v=20260805b"></script>
-<script src="/admin/admin.js?v=20260809b"></script>
+<script src="/lib/supabase-config.js?v=20260814b"></script>
+<script src="/lib/manifest.js?v=20260814b"></script>
+<script src="/admin/admin.js?v=20260814b"></script>
 </body>
 </html>

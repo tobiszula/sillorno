@@ -71,8 +71,19 @@
     [/row-level security/i,
       "No tenés permiso para hacer esto."],
   ];
+  /* Los mensajes que escribimos nosotros ("Poné un nombre…") ya están en
+     criollo y son los útiles: se marcan para que detalle() los deje pasar tal
+     cual en vez de reemplazarlos por el genérico. Sin esto, toda validación
+     del panel terminaba mostrando "Algo salió mal". */
+  function errorUsuario(msg) {
+    var e = new Error(msg);
+    e.esDeUsuario = true;
+    return e;
+  }
+
   function detalle(err) {
     if (!err) return "Error desconocido.";
+    if (err.esDeUsuario) return err.message;
     var msg = err.message || String(err);
     for (var i = 0; i < ERRORES_CONOCIDOS.length; i++) {
       if (ERRORES_CONOCIDOS[i][0].test(msg)) return ERRORES_CONOCIDOS[i][1];
@@ -109,6 +120,7 @@
   var CATS = [];      // categorias
   var PRODS = [];     // productos con .variantes y .estampados
   var SETS = [];      // combos con .combo_items
+  var CODIGOS = [];   // códigos de descuento
   var PALETA = (window.__SILLORNO__ || {}).colores || {};
 
   function porOrden(a, b) {
@@ -121,8 +133,13 @@
       SB.from("categorias").select("*"),
       SB.from("productos").select("*, variantes(*), estampados(*), color_fotos(*), producto_fotos(*)"),
       SB.from("combos").select("*, combo_items(*)"),
+      SB.from("codigos_descuento").select("*"),
     ]).then(function (res) {
-      res.forEach(function (r) { if (r.error) throw r.error; });
+      // Los códigos pueden fallar si todavía no se corrió el SQL: no queremos
+      // que eso tire abajo todo el panel.
+      res.slice(0, 3).forEach(function (r) { if (r.error) throw r.error; });
+      CODIGOS = (res[3] && !res[3].error ? res[3].data : []) || [];
+      CODIGOS.sort(function (a, b) { return String(a.codigo).localeCompare(String(b.codigo), "es"); });
       CATS  = (res[0].data || []).sort(porOrden);
       PRODS = (res[1].data || []).sort(porOrden);
       SETS  = (res[2].data || []).sort(porOrden);
@@ -859,7 +876,7 @@
     abrirEditor(nuevo ? "Nuevo producto" : p.nombre, cuerpo, function () {
       var body = $("[data-editor-body]");
       var nombre = String(val("nombre") || "").trim();
-      if (!nombre) throw new Error("Poné un nombre para el producto.");
+      if (!nombre) throw errorUsuario("Poné un nombre para el producto.");
 
       var variantes = $$('[data-rep="variantes"] .rep-fila', body).map(function (f, i) {
         return {
@@ -871,11 +888,11 @@
         };
       }).filter(function (v) { return v.medida; });
 
-      if (!variantes.length) throw new Error("Cargá al menos una medida con su precio.");
+      if (!variantes.length) throw errorUsuario("Cargá al menos una medida con su precio.");
 
       var repes = variantes.map(function (v) { return v.medida; })
         .filter(function (m, i, a) { return a.indexOf(m) !== i; });
-      if (repes.length) throw new Error("La medida «" + repes[0] + "» está cargada dos veces.");
+      if (repes.length) throw errorUsuario("La medida «" + repes[0] + "» está cargada dos veces.");
 
       var estampados = $$('[data-rep="estampados"] .rep-fila', body).map(function (f, i) {
         var nom = String($("[data-e-nombre]", f).value || "").trim();
@@ -1059,7 +1076,7 @@
 
     abrirEditor(nuevo ? "Nueva categoría" : c.nombre, cuerpo, function () {
       var nombre = String(val("nombre") || "").trim();
-      if (!nombre) throw new Error("Poné un nombre para la categoría.");
+      if (!nombre) throw errorUsuario("Poné un nombre para la categoría.");
       var fila = {
         id: nuevo ? idLibre(nombre, CATS.map(function (x) { return x.id; })) : c.id,
         nombre: nombre,
@@ -1169,7 +1186,7 @@
     abrirEditor(nuevo ? "Nuevo set" : s.nombre, cuerpo, function () {
       var body = $("[data-editor-body]");
       var nombre = String(val("nombre") || "").trim();
-      if (!nombre) throw new Error("Poné un nombre para el set.");
+      if (!nombre) throw errorUsuario("Poné un nombre para el set.");
 
       var items = $$('[data-rep="items"] .rep-fila', body).map(function (f, i) {
         return {
@@ -1181,7 +1198,7 @@
         };
       }).filter(function (it) { return it.producto_id && it.medida; });
 
-      if (!items.length) throw new Error("El set tiene que traer al menos un producto.");
+      if (!items.length) throw errorUsuario("El set tiene que traer al menos un producto.");
 
       var desc = Math.min(90, Math.max(0, num("descuento"))) / 100;
       var id = nuevo ? idLibre(nombre, SETS.map(function (x) { return x.id; })) : s.id;
@@ -1218,6 +1235,136 @@
       if (r.error) throw r.error;
       return cargarTodo();
     }).then(function () { montar(); toast("Set borrado"); })
+      .catch(function (err) { toast("No se pudo borrar: " + detalle(err), true); });
+  }
+
+  /* ==================================================== CÓDIGOS DE DESCUENTO = */
+  function descuentoTexto(c) {
+    return c.tipo === "monto" ? money(c.valor) + " menos" : (+c.valor) + "% off";
+  }
+
+  function vistaCodigos() {
+    var caja = $("[data-lista-codigos]");
+    if (!caja) return;
+
+    if (!CODIGOS.length) {
+      caja.innerHTML = '<p class="vacio">Todavía no hay códigos de descuento.<br><br>' +
+        "Si acabás de agregar esta sección, acordate de correr " +
+        "<code>db/codigos-descuento.sql</code> en Supabase.</p>";
+      return;
+    }
+
+    caja.innerHTML = '<div class="tarjetas">' + CODIGOS.map(function (c) {
+      var vencido = c.vence && c.vence < new Date().toISOString().slice(0, 10);
+      var sinUsos = c.max_usos != null && c.usos >= c.max_usos;
+      var motivo = !c.activo ? "Desactivado" : (vencido ? "Vencido" : (sinUsos ? "Sin usos" : ""));
+
+      return '<article class="tarjeta">' +
+        '<div class="tarjeta-txt">' +
+          '<div class="tarjeta-nom"><code>' + esc(c.codigo) + "</code>" +
+            '<span class="pill pill-oro">' + esc(descuentoTexto(c)) + "</span>" +
+            (motivo ? '<span class="pill pill-off">' + esc(motivo) + "</span>" : "") +
+          "</div>" +
+          '<div class="tarjeta-meta">' +
+            (c.descripcion ? esc(c.descripcion) + " · " : "") +
+            "Usado " + (c.usos || 0) + " " + ((c.usos || 0) === 1 ? "vez" : "veces") +
+            (c.max_usos != null ? " de " + c.max_usos : "") +
+            (c.vence ? " · vence " + esc(c.vence) : "") +
+          "</div>" +
+        "</div>" +
+        '<div class="tarjeta-acc">' +
+          '<button type="button" class="btn btn-sm" data-editar-codigo="' + esc(c.codigo) + '">Editar</button>' +
+          '<button type="button" class="btn btn-sm btn-danger" data-borrar-codigo="' + esc(c.codigo) + '">Borrar</button>' +
+        "</div>" +
+      "</article>";
+    }).join("") + "</div>";
+  }
+
+  function editorCodigo(c) {
+    var nuevo = !c;
+    c = c || { tipo: "porcentaje", activo: true, usos: 0 };
+
+    var cuerpo =
+      '<div class="campos">' +
+        '<label class="ancho">Código' +
+          '<input type="text" data-campo="codigo" placeholder="VERANO10" ' +
+            'value="' + esc(c.codigo || "") + '"' + (nuevo ? "" : " readonly") + ">" +
+          '<span class="hint">Se guarda en mayúsculas. No distingue mayúsculas al usarlo.</span>' +
+        "</label>" +
+
+        "<label>Tipo<select data-campo=\"tipo\">" +
+          '<option value="porcentaje"' + (c.tipo !== "monto" ? " selected" : "") + ">Porcentaje (%)</option>" +
+          '<option value="monto"' + (c.tipo === "monto" ? " selected" : "") + ">Monto fijo ($)</option>" +
+        "</select></label>" +
+
+        '<label>Valor' +
+          '<input type="number" step="0.01" min="0.01" data-campo="valor" ' +
+            'value="' + esc(c.valor != null ? c.valor : "") + '">' +
+          '<span class="hint">10 = 10% off, o 5000 = $5.000 menos.</span>' +
+        "</label>" +
+
+        '<label class="ancho">Descripción <span class="hint">(sólo para vos)</span>' +
+          '<input type="text" data-campo="descripcion" value="' + esc(c.descripcion || "") + '">' +
+        "</label>" +
+
+        '<label>Vence <span class="hint">(opcional)</span>' +
+          '<input type="date" data-campo="vence" value="' + esc(c.vence || "") + '">' +
+        "</label>" +
+
+        '<label>Tope de usos <span class="hint">(opcional)</span>' +
+          '<input type="number" step="1" min="1" data-campo="max_usos" ' +
+            'value="' + esc(c.max_usos != null ? c.max_usos : "") + '">' +
+        "</label>" +
+
+        '<div class="ancho">' +
+          '<label class="check"><input type="checkbox" data-campo="activo"' +
+            (c.activo !== false ? " checked" : "") + "> Activo</label>" +
+        "</div>" +
+      "</div>";
+
+    abrirEditor(nuevo ? "Nuevo código" : c.codigo, cuerpo, function () {
+      var codigo = String(val("codigo") || "").trim().toUpperCase();
+      if (!codigo) throw errorUsuario("Poné un código.");
+      if (/\s/.test(codigo)) throw errorUsuario("El código no puede tener espacios.");
+
+      var valor = num("valor");
+      if (!(valor > 0)) throw errorUsuario("El valor tiene que ser mayor que cero.");
+      var tipo = val("tipo") === "monto" ? "monto" : "porcentaje";
+      if (tipo === "porcentaje" && valor > 90) {
+        throw errorUsuario("Un porcentaje mayor a 90% seguro es un error. Si querés " +
+                        "un descuento fijo, elegí «Monto fijo».");
+      }
+
+      if (nuevo && CODIGOS.some(function (x) { return x.codigo === codigo; })) {
+        throw errorUsuario("Ya existe un código con ese nombre.");
+      }
+
+      var tope = String(val("max_usos") || "").trim();
+      var fila = {
+        codigo: codigo,
+        tipo: tipo,
+        valor: valor,
+        descripcion: txt("descripcion"),
+        vence: txt("vence"),
+        max_usos: tope ? Math.max(1, Number(tope)) : null,
+        activo: !!val("activo"),
+      };
+
+      return SB.from("codigos_descuento").upsert(fila).then(function (r) {
+        if (r.error) throw r.error;
+      });
+    });
+  }
+
+  function borrarCodigo(codigo) {
+    var c = CODIGOS.filter(function (x) { return x.codigo === codigo; })[0];
+    if (!c) return;
+    if (!confirm("¿Borrar el código «" + c.codigo + "»?\n\nSi sólo querés " +
+                 "cortarlo un tiempo, mejor editalo y destildá «Activo».")) return;
+    SB.from("codigos_descuento").delete().eq("codigo", codigo).then(function (r) {
+      if (r.error) throw r.error;
+      return cargarTodo();
+    }).then(function () { montar(); toast("Código borrado"); })
       .catch(function (err) { toast("No se pudo borrar: " + detalle(err), true); });
   }
 
@@ -1314,6 +1461,7 @@
     vistaProductos();
     vistaCategorias();
     vistaSets();
+    vistaCodigos();
     $("[data-guardar-precios]").disabled = !Object.keys(sucios).length;
   }
 
@@ -1347,6 +1495,11 @@
     if (e.target.closest("[data-nuevo-producto]"))  return editorProducto(null);
     if (e.target.closest("[data-nueva-categoria]")) return editorCategoria(null);
     if (e.target.closest("[data-nuevo-set]"))       return editorSet(null);
+    if ((el = e.target.closest("[data-editar-codigo]")))
+      return editorCodigo(CODIGOS.filter(function (c) { return c.codigo === el.getAttribute("data-editar-codigo"); })[0]);
+    if ((el = e.target.closest("[data-borrar-codigo]")))
+      return borrarCodigo(el.getAttribute("data-borrar-codigo"));
+    if (e.target.closest("[data-nuevo-codigo]"))    return editorCodigo(null);
     if (e.target.closest("[data-importar]"))        return importarManifest();
   });
 
@@ -1398,7 +1551,7 @@
       if (r.error) throw r.error;
       if (!r.data) {
         return SB.auth.signOut().then(function () {
-          throw new Error("Ese usuario no tiene permiso de administrador. " +
+          throw errorUsuario("Ese usuario no tiene permiso de administrador. " +
                           "Hay que agregarlo a la tabla admins (ver db/schema.sql).");
         });
       }

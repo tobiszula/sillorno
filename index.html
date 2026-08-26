@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap">
 <link rel="preload" as="image" href="assets/img/hero-mobile.webp?v=2" media="(max-width: 719px)" fetchpriority="high">
 <link rel="preload" as="image" href="assets/img/hero-desktop.webp?v=2" media="(min-width: 720px)" fetchpriority="high">
-<link rel="stylesheet" href="styles.css?v=20260813e">
+<link rel="stylesheet" href="styles.css?v=20260814b">
 </head>
 <body>
 
@@ -289,9 +289,28 @@
     </header>
     <div class="drawer-body" data-cart-body></div>
     <footer class="drawer-foot" data-cart-foot hidden>
+      <!-- Código de descuento -->
+      <div class="cupon">
+        <div class="cupon-fila">
+          <input type="text" data-cupon placeholder="¿Tenés un código?"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 aria-label="Código de descuento">
+          <button class="btn btn-line" type="button" data-cupon-aplicar>Aplicar</button>
+        </div>
+        <p class="cupon-msg" data-cupon-msg hidden></p>
+      </div>
+
       <div class="drawer-total">
         <span>Total</span>
         <strong data-cart-total></strong>
+      </div>
+      <div class="drawer-total drawer-total-desc" data-linea-descuento hidden>
+        <span data-desc-label>Descuento</span>
+        <strong data-desc-monto></strong>
+      </div>
+      <div class="drawer-total drawer-total-final" data-linea-final hidden>
+        <span>Total con descuento</span>
+        <strong data-cart-final></strong>
       </div>
       <p class="drawer-note">El envío se coordina por WhatsApp según tu zona.</p>
       <button class="btn btn-primary btn-wa" type="button" data-checkout>
@@ -315,6 +334,6 @@
 <script defer src="lib/manifest.js?v=20260809f"></script>
 <script defer src="lib/supabase-config.js?v=20260809f"></script>
 <script defer src="lib/data.js?v=20260809f"></script>
-<script defer src="main.js?v=20260813d"></script>
+<script defer src="main.js?v=20260814a"></script>
 </body>
 </html>
