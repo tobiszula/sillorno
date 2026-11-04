@@ -236,6 +236,16 @@
     }).join("");
   }
 
+  // ¿Hay algo para elegir antes de agregar? Más de una medida, estampados o
+  // colores. Si no hay nada, el "+" de la tarjeta lo agrega directo; si hay,
+  // abre la ficha, así el pedido llega con el color o el estampado elegido.
+  function hayQueElegir(p) {
+    return (p.variantes || []).length > 1 ||
+           (p.estampados || []).length > 0 ||
+           (p.colores || []).length > 0 ||
+           Object.keys(p.fotosColor || {}).length > 0;
+  }
+
   function cardHTML(p) {
     var flags = "";
     if (p.destacado) flags += '<span class="flag is-wine">Destacado</span>';
@@ -244,7 +254,7 @@
     }
     if (!p._hayStock) flags += '<span class="flag">Sin stock</span>';
 
-    var multi = (p.variantes || []).length > 1 || (p.estampados || []).length > 0;
+    var multi = hayQueElegir(p);
     var spec = [p.material, p.gramaje].filter(Boolean).join(" · ");
 
     return '<article class="card" data-card="' + esc(p.id) + '">' +
@@ -651,6 +661,62 @@
     syncGaleria();
   }
 
+  function stockInfo(v) {
+    if (v.stock === "ultimas") return { cls: " is-ultimas", txt: "Últimas unidades" };
+    if (v.stock === "agotado") return { cls: " is-agotado", txt: "Sin stock por ahora" };
+    return { cls: "", txt: "Disponible" };
+  }
+
+  // Después de elegir medida se actualiza sólo lo que cambia (precio, stock,
+  // detalle, botón y foto), sin redibujar la ficha. Redibujarla la devolvía
+  // arriba de todo y había que volver a bajar después de cada toque.
+  function refrescarFicha() {
+    var p = byId(pdState.pid); if (!p) return;
+    var v = variante(p, pdState.medida) || p.variantes[0];
+    var st = stockInfo(v);
+    var precio = $("[data-pd-price]");
+    if (precio && precio.textContent !== money(v.precio)) {
+      precio.textContent = money(v.precio);
+      tic(precio);
+    }
+    var stock = $("[data-pd-stock]");
+    if (stock) { stock.className = "stock" + st.cls; stock.textContent = st.txt; }
+    var det = $("[data-pd-detalle]");
+    if (det && det.textContent !== (v.detalle || "")) {
+      det.textContent = v.detalle || "";
+      det.hidden = !v.detalle;
+      tic(det);
+    }
+    var add = $("[data-add-cart]");
+    if (add) {
+      add.disabled = v.stock === "agotado";
+      add.textContent = add.disabled ? "Sin stock" : "Agregar al pedido";
+    }
+    updatePdImage();
+  }
+
+  // Un movimiento corto sobre lo que cambió, para que se note la respuesta.
+  function tic(el) {
+    el.classList.remove("pd-tick");
+    void el.offsetWidth;   // así se repite aunque se toque seguido
+    el.classList.add("pd-tick");
+  }
+
+  // En el celular: si al elegir un estampado la foto quedó casi fuera de la
+  // vista, la ficha se desliza suave hasta mostrarla. La tira está justo
+  // debajo de la foto, así que no se pierde de vista lo que se estaba tocando.
+  function mostrarFoto() {
+    var panel = $("[data-product-panel]");
+    var media = panel && $(".pd-media", panel);
+    if (!media || window.matchMedia("(min-width: 720px)").matches) return;
+    var pr = panel.getBoundingClientRect(), mr = media.getBoundingClientRect();
+    var visible = Math.min(mr.bottom, pr.bottom) - Math.max(mr.top, pr.top);
+    if (visible >= mr.height * 0.5) return;
+    var quieto = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    panel.scrollTo({ top: Math.max(0, panel.scrollTop + mr.top - pr.top),
+                     behavior: quieto ? "auto" : "smooth" });
+  }
+
   function productHTML(p) {
     var v = variante(p, pdState.medida) || p.variantes[0];
     var est = (p.estampados || []).filter(function (e) { return e.slug === pdState.estampado; })[0];
@@ -658,24 +724,54 @@
     var img = currentPdImage(p);
     var agotado = v.stock === "agotado";
 
-    var opciones = (p.variantes || []).map(function (x) {
-      var dis = x.stock === "agotado";
-      return '<button class="opt' + (x.medida === v.medida ? " is-active" : "") + '" type="button" ' +
-        'data-pick-medida="' + esc(x.medida) + '"' + (dis ? " disabled" : "") + ">" +
-        esc(x.medida) + "<small>" + esc(x.detalle) + " · " + money(x.precio) + "</small></button>";
-    }).join("");
+    // Medidas: botones en una fila, cada uno con su precio. Antes eran cajas
+    // apiladas a todo el ancho y empujaban los estampados muy abajo. Lo que
+    // trae la medida elegida (en sábanas: plana, ajustable y fundas) va una
+    // sola vez, debajo de la fila. Con una sola medida no hay nada que
+    // elegir: va como texto.
+    var vars = p.variantes || [];
+    var medidas;
+    if (vars.length > 1) {
+      var nv = vars.length;
+      var cols = nv <= 3 ? nv : (nv === 4 ? 2 : 3);
+      medidas = '<div class="pd-block"><h4>Medida</h4>' +
+        '<div class="opts" style="--cols:' + cols + ";--cols-lg:" + Math.min(nv, 4) + '">' +
+        vars.map(function (x) {
+          var dis = x.stock === "agotado";
+          var on = x.medida === v.medida;
+          return '<button class="opt' + (on ? " is-active" : "") + '" type="button" ' +
+            'data-pick-medida="' + esc(x.medida) + '" aria-pressed="' + on + '"' + (dis ? " disabled" : "") + ">" +
+            '<span class="opt-med">' + esc(x.medida) + "</span>" +
+            "<small>" + (dis ? "Sin stock" : money(x.precio)) + "</small></button>";
+        }).join("") + "</div>" +
+        '<p class="opt-detalle" data-pd-detalle' + (v.detalle ? "" : " hidden") + ">" +
+          esc(v.detalle || "") + "</p></div>";
+    } else {
+      medidas = '<div class="pd-block"><h4>Medida</h4><p class="opt-unica">' + esc(v.medida) +
+        (v.detalle ? " <span>· " + esc(v.detalle) + "</span>" : "") + "</p></div>";
+    }
 
+    // Estampados: tira de miniaturas pegada abajo de la foto, así lo que se
+    // toca y lo que cambia se ven juntos sin scrollear. Antes iban al final
+    // de la ficha, lejos de la foto. El nombre del elegido va en el título.
     var patterns = "";
-    if (p.estampados && p.estampados.length) {
-      patterns = '<div class="pd-block"><h4>' +
-        (p.id === "manta-outlet" ? "Diseño" : "Estampado") +
-        " · " + esc(est ? est.nombre : "elegí uno") + "</h4>" +
+    var ests = p.estampados || [];
+    if (ests.length) {
+      var esDiseno = p.id === "manta-outlet";
+      patterns = '<div class="pd-est">' +
+        '<div class="pd-est-head"><h4>' + (esDiseno ? "Diseño" : "Estampado") +
+          ' · <span data-pd-est-nombre>' + esc(est ? est.nombre : "elegí uno") + "</span></h4>" +
+          '<span class="pd-est-n">' + ests.length + " " +
+            (esDiseno ? (ests.length === 1 ? "diseño" : "diseños")
+                      : (ests.length === 1 ? "estampado" : "estampados")) + "</span>" +
+        "</div>" +
         '<div class="pattern-scroll">' +
-          '<div class="pattern-grid">' + p.estampados.map(function (e) {
-            return '<button class="pattern' + (e.slug === pdState.estampado ? " is-active" : "") +
-              '" type="button" data-pick-est="' + esc(e.slug) + '" aria-label="' + esc(e.nombre) + '">' +
-              '<img src="' + esc(foto(e.img, 200)) + '" alt="' + esc(e.nombre) + '" loading="lazy">' +
-              "<span>" + esc(e.nombre) + "</span></button>";
+          '<div class="pattern-grid">' + ests.map(function (e) {
+            var on = e.slug === pdState.estampado;
+            return '<button class="pattern' + (on ? " is-active" : "") + '" type="button" ' +
+              'data-pick-est="' + esc(e.slug) + '" aria-pressed="' + on + '" ' +
+              'aria-label="' + esc(e.nombre) + '" title="' + esc(e.nombre) + '">' +
+              '<img src="' + esc(foto(e.img, 200)) + '" alt="" loading="lazy"></button>';
           }).join("") + "</div>" +
           // En celu la fila se desliza; esta flechita avisa que hay más
           // estampados para ver y se esconde sola al llegar al final.
@@ -719,9 +815,7 @@
       contador = '<span class="pd-count" aria-hidden="true">' + (idxFoto + 1) + " / " + fotos.length + "</span>";
     }
 
-    var stockClass = v.stock === "ultimas" ? " is-ultimas" : (agotado ? " is-agotado" : "");
-    var stockText = v.stock === "ultimas" ? "Últimas unidades"
-                  : (agotado ? "Sin stock por ahora" : "Disponible");
+    var st = stockInfo(v);
 
     return '<div class="pd" data-pd-id="' + esc(p.id) + '">' +
       '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
@@ -729,15 +823,17 @@
       '<div class="pd-media" data-pd-swipe><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
         arrows + contador +
         '<div class="pd-overlay">' + colores + "</div></div>" +
+      patterns +
       '<div class="pd-body">' +
         '<div><p class="pd-cat">' + esc(p._cat) + '</p>' +
         '<h2 class="pd-name">' + esc(p.nombre) + "</h2></div>" +
-        '<p class="pd-desc">' + esc(p.descripcion) + "</p>" +
+        // Precio antes que la descripción: con la tira de estampados arriba,
+        // así sigue entrando en la primera pantalla del celular.
         '<div class="pd-price"><strong data-pd-price>' + money(v.precio) + "</strong>" +
-          '<small class="stock' + stockClass + '">' + stockText + "</small></div>" +
+          '<small class="stock' + st.cls + '" data-pd-stock>' + st.txt + "</small></div>" +
+        '<p class="pd-desc">' + esc(p.descripcion) + "</p>" +
         (p.incluye ? '<p class="card-spec">Incluye: ' + esc(p.incluye) + "</p>" : "") +
-        '<div class="pd-block"><h4>Medida</h4><div class="opts">' + opciones + "</div></div>" +
-        patterns +
+        medidas +
         '<div class="pd-block"><h4>Ficha técnica</h4><div class="specs">' +
           (p.specs || []).map(function (s) { return '<span class="tag">' + esc(s) + "</span>"; }).join("") +
         "</div></div>" +
@@ -1342,9 +1438,9 @@
       if ((el = e.target.closest("[data-quick]"))) {
         var p = byId(el.getAttribute("data-quick"));
         if (!p) return;
-        var unica = p.variantes.length === 1 && !(p.estampados && p.estampados.length);
+        var unica = !hayQueElegir(p);
         if (unica && p.variantes[0].stock !== "agotado") {
-          cartAdd(p.id, p.variantes[0].medida, null, 1);
+          cartAdd(p.id, p.variantes[0].medida, null, null, 1);
           toast(p.nombre + " agregado al pedido");
         } else {
           openProduct(p.id);
@@ -1362,20 +1458,24 @@
       if ((el = e.target.closest("[data-pick-medida]"))) {
         pdState.foto = null;   // la medida manda sobre la galería
         pdState.medida = el.getAttribute("data-pick-medida");
-        // Feedback al toque: la foto puede tardar un instante en cargar,
-        // pero el botón elegido se marca ya, así se ve que el click anduvo.
-        $$(".opt", el.closest(".pd-block")).forEach(function (b) {
+        $$("[data-pick-medida]").forEach(function (b) {
           b.classList.toggle("is-active", b === el);
+          b.setAttribute("aria-pressed", b === el ? "true" : "false");
         });
-        renderProduct(); return;
+        refrescarFicha(); return;
       }
       if ((el = e.target.closest("[data-pick-est]"))) {
         pdState.foto = null;
         pdState.estampado = el.getAttribute("data-pick-est");
-        $$(".pattern", el.closest(".pd-block")).forEach(function (b) {
+        $$("[data-pick-est]").forEach(function (b) {
           b.classList.toggle("is-active", b === el);
+          b.setAttribute("aria-pressed", b === el ? "true" : "false");
         });
-        renderProduct(); return;
+        var nomEst = $("[data-pd-est-nombre]");
+        if (nomEst) nomEst.textContent = el.getAttribute("aria-label");
+        updatePdImage();
+        mostrarFoto();
+        return;
       }
       if ((el = e.target.closest("[data-pick-color]"))) {
         var pickC = el.getAttribute("data-pick-color");

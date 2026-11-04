@@ -818,41 +818,82 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round
   text-transform: uppercase; color: var(--cream-3); margin-bottom: .6rem;
 }
 
-.opts { display: flex; flex-wrap: wrap; gap: .45rem; }
+/* Medidas en una fila, cada una con su precio. Antes eran cajas apiladas
+   a todo el ancho y empujaban los estampados muy abajo. --cols lo pone
+   main.js según cuántas medidas hay (4 medidas = 2 × 2 en el celular). */
+.opts {
+  display: grid; gap: .45rem;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+}
 .opt {
-  padding: .6rem .85rem; border: 1px solid var(--line-2); border-radius: var(--radius);
-  font-size: .82rem; color: var(--cream-2); text-align: left; line-height: 1.3;
+  min-height: 3.2rem; padding: .55rem .45rem;
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  color: var(--cream-2); text-align: center; line-height: 1.25;
   transition: border-color .3s var(--ease-out), background .3s var(--ease-out), color .3s var(--ease-out);
 }
-.opt small { display: block; font-size: .68rem; color: var(--cream-3); margin-top: 2px; }
+.opt-med {
+  display: block; font-size: .84rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.opt small {
+  display: block; margin-top: 3px;
+  font-size: .7rem; color: var(--cream-3); font-variant-numeric: tabular-nums;
+}
 .opt:hover:not(:disabled) { border-color: var(--cream-3); color: var(--cream); }
 .opt.is-active { border-color: var(--wine-soft); background: rgba(168, 96, 58, .22); color: var(--cream); }
-.opt:disabled { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
+.opt.is-active small { color: var(--cream-2); }
+.opt:disabled { opacity: .35; cursor: not-allowed; }
+.opt:disabled .opt-med { text-decoration: line-through; }
 
-/* Galería de estampados. En celu se desliza horizontal (una fila, con
-   snap); en desktop es una grilla fija — ahí sobra lugar y no hace falta
-   scrollear. */
-.pattern-scroll { position: relative; }
+/* Lo que trae la medida elegida (en sábanas: plana, ajustable y fundas) */
+.opt-detalle { margin-top: .6rem; font-size: .8rem; line-height: 1.45; color: var(--cream-2); }
+/* Una sola medida: no hay nada que elegir, va como texto */
+.opt-unica { font-size: .92rem; color: var(--cream); }
+.opt-unica span { color: var(--cream-3); }
+
+/* Cuando cambia el precio o el detalle, un movimiento corto que avisa */
+@keyframes pd-tick {
+  from { opacity: .3; transform: translateY(6px); }
+  to   { opacity: 1;  transform: none; }
+}
+.pd-tick { animation: pd-tick .34s var(--ease-out); }
+
+/* Estampados: tira de miniaturas pegada abajo de la foto, para ver juntos
+   lo que se toca y lo que cambia. En celu se desliza de costado de borde a
+   borde (con snap); en compu es una grilla debajo de la foto. */
+.pd-est { padding: 1rem var(--pad) .1rem; }
+.pd-est-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .8rem;
+  margin-bottom: .55rem;
+}
+.pd-est h4 {
+  font-size: .68rem; font-weight: 500; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--cream-3);
+}
+.pd-est h4 span { color: var(--cream); }
+.pd-est-n { font-size: .72rem; color: var(--cream-3); white-space: nowrap; }
+
+.pattern-scroll { position: relative; margin-inline: calc(-1 * var(--pad)); }
 .pattern-grid {
   display: flex; gap: .5rem; overflow-x: auto;
   scroll-snap-type: x proximity; scrollbar-width: none;
-  padding-right: 2.4rem;
+  /* 3px arriba y abajo: que no se corte el borde del elegido */
+  padding: 3px var(--pad);
+  scroll-padding-inline: var(--pad);
 }
 .pattern-grid::-webkit-scrollbar { display: none; }
 .pattern {
-  position: relative; flex: 0 0 84px; aspect-ratio: 4 / 3; border-radius: 2px; overflow: hidden;
+  position: relative; flex: 0 0 72px; aspect-ratio: 1; padding: 0;
+  border-radius: 3px; overflow: hidden;
   border: 1px solid var(--line); scroll-snap-align: start;
   transition: border-color .3s var(--ease-out);
 }
 .pattern img { width: 100%; height: 100%; object-fit: cover; }
-.pattern span {
-  position: absolute; inset: auto 0 0 0; padding: .25rem .3rem;
-  font-size: .58rem; text-align: center;
-  background: linear-gradient(180deg, transparent, rgba(13, 10, 11, .9));
-}
+.pattern:hover { border-color: var(--cream-3); }
 .pattern.is-active { border-color: var(--wine-soft); }
 .pattern.is-active::after {
-  content: ""; position: absolute; inset: 0; border: 2px solid var(--wine-soft);
+  content: ""; position: absolute; inset: 0;
+  border: 2px solid var(--wine-soft); border-radius: 3px;
 }
 
 /* Flechita que avisa "hay más estampados": se esconde sola al llegar al
@@ -1072,6 +1113,7 @@ body.is-locked { overflow: hidden; }
 /* Sólo se frenan los efectos intrusivos, no las microinteracciones */
 @media (prefers-reduced-motion: reduce) {
   .hero-meta .dot { animation: none; }
+  .pd-tick { animation: none; }
 }
 
 /* ======================================================  16. RESPONSIVE  */
@@ -1089,9 +1131,10 @@ body.is-locked { overflow: hidden; }
   /* El footer define sus columnas en su propia sección (busca .footer-inner
      más arriba). Antes había acá un 1.4fr para la columna de la marca, del
      pie viejo, y le ganaba por venir después. */
+  .pattern-scroll { margin-inline: 0; }
   .pattern-grid {
     display: grid; grid-template-columns: repeat(6, 1fr);
-    overflow-x: visible; padding-right: 0;
+    overflow-x: visible; padding: 3px 0;
   }
   .pattern { flex: initial; }
   .pattern-hint { display: none; }
@@ -1108,8 +1151,17 @@ body.is-locked { overflow: hidden; }
        celular, donde tiene que cubrir la pantalla entera. */
     height: auto; max-height: 88svh;
   }
-  .pd { display: grid; grid-template-columns: 1fr 1fr; }
-  .pd-media { aspect-ratio: auto; height: 100%; max-height: none; min-height: 480px; }
+  /* Foto arriba a la izquierda, estampados debajo de la foto, y el texto
+     en la columna derecha de punta a punta. */
+  .pd {
+    display: grid; grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: "media body" "est body";
+  }
+  .pd-media { grid-area: media; aspect-ratio: auto; height: 100%; max-height: none; min-height: 480px; }
+  .pd-est { grid-area: est; padding: 1rem 1.1rem 1.2rem; }
+  .pd-body { grid-area: body; }
+  .opts { grid-template-columns: repeat(var(--cols-lg, 3), minmax(0, 1fr)); }
   .pd-body { padding: 1.8rem 1.9rem 2rem; }
   .pd-actions { background: var(--bg-2); }
 
