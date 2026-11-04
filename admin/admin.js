@@ -616,61 +616,183 @@
   }
 
   /* ============================================================== PRECIOS = */
-  var sucios = {};   // { idVariante: precio }
+  // Cambios sin guardar: { idVariante: precioNuevo }. Sobrevive a cambiar de
+  // categoría o de solapa: nada se pierde hasta que se guarda o se descarta.
+  var sucios = {};
+  var loteDir = 1;   // 1 = subir, -1 = bajar
+
+  function variantePorId(id) {
+    var hallada = null;
+    PRODS.forEach(function (p) {
+      (p.variantes || []).forEach(function (v) { if (v.id === id) hallada = { v: v, p: p }; });
+    });
+    return hallada;
+  }
+
+  function sinCategoria(p) {
+    return !CATS.some(function (c) { return c.id === p.categoria_id; });
+  }
+
+  // El desplegable se rearma en cada render (pueden haberse creado o
+  // borrado categorías), sin perder la que estaba elegida.
+  function llenarCategoriasPrecios() {
+    var sel = $("[data-precios-cat]");
+    var actual = sel.value;
+    var html = '<option value="">Todas las categorías</option>' +
+      CATS.filter(function (c) {
+        return PRODS.some(function (p) { return p.categoria_id === c.id; });
+      }).map(function (c) {
+        return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + "</option>";
+      }).join("");
+    if (PRODS.some(sinCategoria)) html += '<option value="__sin">Sin categoría</option>';
+    sel.innerHTML = html;
+    if ($$("option", sel).some(function (o) { return o.value === actual; })) sel.value = actual;
+  }
+
+  function productosPrecios() {
+    var cat = $("[data-precios-cat]").value;
+    if (!cat) return PRODS;
+    if (cat === "__sin") return PRODS.filter(sinCategoria);
+    return PRODS.filter(function (p) { return p.categoria_id === cat; });
+  }
+
+  function fmtPct(n) {
+    var r = Math.round(n * 10) / 10;
+    return String(r).replace(".", ",");
+  }
+
+  // "$24.400 +10%" al lado del precio cambiado, para revisar antes de guardar
+  function antesHTML(orig, nuevo) {
+    var o = Number(orig) || 0, n = Number(nuevo) || 0;
+    var html = "<s>" + esc(money(o)) + "</s>";
+    if (o) {
+      // Entero (+10%, no +9,8%): el redondeo a $100 mueve unas décimas y eso
+      // haría pensar que el ajuste salió mal. Debajo de 1% sí va con decimal.
+      var pct = (n / o - 1) * 100;
+      var mostrar = Math.abs(pct) >= 1 ? Math.round(pct) : Math.round(pct * 10) / 10;
+      html += ' <b class="' + (pct >= 0 ? "sube" : "baja") + '">' +
+        (mostrar > 0 ? "+" : "") + fmtPct(mostrar) + "%</b>";
+    }
+    return html;
+  }
+
+  function filaPrecioHTML(v) {
+    var pend = Object.prototype.hasOwnProperty.call(sucios, v.id);
+    var valor = pend ? sucios[v.id] : v.precio;
+    return '<div class="pfila">' +
+      '<span class="pfila-med">' + esc(v.medida) + "</span>" +
+      '<span class="pfila-det">' + esc(v.detalle || "") + "</span>" +
+      '<div class="pfila-precio">' +
+        '<span class="pfila-antes" data-antes' + (pend ? "" : " hidden") + ">" +
+          (pend ? antesHTML(v.precio, valor) : "") + "</span>" +
+        '<label class="pfila-input"><span aria-hidden="true">$</span>' +
+          '<input type="number" step="0.01" min="0" inputmode="decimal" data-precio-id="' + v.id + '" ' +
+            'value="' + esc(valor) + '"' + (pend ? ' class="is-dirty"' : "") +
+            ' aria-label="Precio de ' + esc(v.medida) + '"></label>' +
+      "</div>" +
+    "</div>";
+  }
+
+  function grupoPrecioHTML(p) {
+    var filas = (p.variantes || []).map(filaPrecioHTML).join("") ||
+      '<div class="pfila"><span class="pfila-det">Sin medidas cargadas.</span></div>';
+    return '<div class="pgrupo">' +
+      '<div class="pgrupo-top">' +
+        '<img src="' + esc(verFoto(p.img)) + '" alt="" loading="lazy">' +
+        '<div class="pgrupo-nom">' + esc(p.nombre) + "</div>" +
+      "</div>" + filas +
+    "</div>";
+  }
 
   function vistaPrecios() {
+    var ajuste = $("[data-ajuste]");
     if (!PRODS.length) {
+      ajuste.hidden = true;
       $("[data-lista-precios]").innerHTML =
         '<p class="vacio">Todavía no hay productos en la base.<br><br>' +
         '<button type="button" class="btn btn-primary" data-importar>' +
         "Importar el catálogo actual de la web</button></p>";
+      actualizarBarraPrecios();
       return;
     }
-    var q = String($("[data-buscar-precios]").value || "").trim().toLowerCase();
-    var lista = PRODS.filter(function (p) {
-      if (!q) return true;
-      return (p.nombre + " " + catNombre(p.categoria_id)).toLowerCase().indexOf(q) >= 0;
-    });
+    ajuste.hidden = false;
+    llenarCategoriasPrecios();
 
+    var lista = productosPrecios();
+    var html;
     if (!lista.length) {
-      $("[data-lista-precios]").innerHTML = '<p class="vacio">No hay productos que coincidan.</p>';
-      return;
-    }
-
-    $("[data-lista-precios]").innerHTML = lista.map(function (p) {
-      var filas = (p.variantes || []).map(function (v) {
-        return '<div class="pfila">' +
-          '<span class="pfila-med">' + esc(v.medida) + "</span>" +
-          '<span class="pfila-det">' + esc(v.detalle || "") + "</span>" +
-          '<input type="number" step="0.01" min="0" data-precio-id="' + v.id + '" ' +
-            'value="' + esc(v.precio) + '" aria-label="Precio de ' + esc(v.medida) + '">' +
-        "</div>";
+      html = '<p class="vacio">Esta categoría todavía no tiene productos.</p>';
+    } else if ($("[data-precios-cat]").value) {
+      html = lista.map(grupoPrecioHTML).join("");
+    } else {
+      // "Todas": agrupado con un título por categoría, en el mismo orden que
+      // la web, así no es una lista larga sin referencias.
+      var grupos = CATS.map(function (c) {
+        return { nombre: c.nombre, prods: lista.filter(function (p) { return p.categoria_id === c.id; }) };
+      }).filter(function (g) { return g.prods.length; });
+      var sueltos = lista.filter(sinCategoria);
+      if (sueltos.length) grupos.push({ nombre: "Sin categoría", prods: sueltos });
+      html = grupos.map(function (g) {
+        return '<h3 class="pcat">' + esc(g.nombre) + " <span>" + g.prods.length +
+          (g.prods.length === 1 ? " producto" : " productos") + "</span></h3>" +
+          g.prods.map(grupoPrecioHTML).join("");
       }).join("");
-      if (!filas) filas = '<div class="pfila"><span class="pfila-det">Sin medidas cargadas.</span></div>';
+    }
+    $("[data-lista-precios]").innerHTML = html;
+    actualizarResumenLote();
+    actualizarBarraPrecios();
+  }
 
-      return '<div class="pgrupo">' +
-        '<div class="pgrupo-top">' +
-          '<img src="' + esc(verFoto(p.img)) + '" alt="" loading="lazy">' +
-          "<div><div class=\"pgrupo-nom\">" + esc(p.nombre) + "</div>" +
-          '<div class="pgrupo-cat">' + esc(catNombre(p.categoria_id)) + "</div></div>" +
-        "</div>" + filas +
-      "</div>";
-    }).join("");
+  // Compara lo escrito contra el precio guardado y marca la fila. Un campo
+  // vacío o negativo cuenta como "sin cambio" (si no, borrar el número para
+  // escribir otro lo dejaba marcado en $0).
+  function marcarPrecio(inp) {
+    var id = Number(inp.getAttribute("data-precio-id"));
+    var h = variantePorId(id);
+    var txt = String(inp.value).trim();
+    var nuevo = Number(txt);
+    var cambio = h && txt !== "" && !isNaN(nuevo) && nuevo >= 0 && nuevo !== Number(h.v.precio);
+    inp.classList.toggle("is-dirty", !!cambio);
+    if (cambio) sucios[id] = nuevo; else delete sucios[id];
+    var antes = $("[data-antes]", inp.closest(".pfila"));
+    if (antes) {
+      antes.hidden = !cambio;
+      antes.innerHTML = cambio ? antesHTML(h.v.precio, nuevo) : "";
+    }
+  }
+
+  // Barra fija de abajo con "Guardar / Descartar": aparece sólo si hay algo
+  // pendiente. También marca la solapa, por si el dueño se va a otra.
+  function actualizarBarraPrecios() {
+    Object.keys(sucios).forEach(function (id) {
+      if (!variantePorId(Number(id))) delete sucios[id];   // medida que ya no existe
+    });
+    var ids = Object.keys(sucios);
+    var n = ids.length;
+    var barra = $("[data-guardar-barra]");
+    barra.classList.toggle("is-on", n > 0);
+    barra.setAttribute("aria-hidden", n ? "false" : "true");
+    $("[data-guardar-precios]").disabled = !n;
+    document.body.classList.toggle("hay-cambios", n > 0);
+    var tab = $('[data-tab="precios"]');
+    if (tab) tab.classList.toggle("tiene-cambios", n > 0);
+    if (!n) { volverDescartar(); return; }
+
+    var visibles = $$("[data-lista-precios] [data-precio-id]").map(function (i) {
+      return i.getAttribute("data-precio-id");
+    });
+    var ocultos = ids.filter(function (id) { return visibles.indexOf(id) < 0; }).length;
+    $("[data-guardar-resumen]").innerHTML = "<b>" + n + "</b> " +
+      (n === 1 ? "precio cambiado" : "precios cambiados") + " sin guardar" +
+      (ocultos ? '<span class="guardar-ocultos"> · ' + ocultos +
+        (ocultos === 1 ? " está" : " están") + " en otra categoría</span>" : "");
   }
 
   document.addEventListener("input", function (e) {
     var inp = e.target.closest("[data-precio-id]");
     if (!inp) return;
-    var id = Number(inp.getAttribute("data-precio-id"));
-    var v  = null;
-    PRODS.forEach(function (p) {
-      (p.variantes || []).forEach(function (x) { if (x.id === id) v = x; });
-    });
-    var nuevo = Number(inp.value);
-    var cambio = v && !isNaN(nuevo) && nuevo !== Number(v.precio);
-    inp.classList.toggle("is-dirty", !!cambio);
-    if (cambio) sucios[id] = nuevo; else delete sucios[id];
-    $("[data-guardar-precios]").disabled = !Object.keys(sucios).length;
+    marcarPrecio(inp);
+    actualizarBarraPrecios();
   });
 
   $("[data-guardar-precios]").addEventListener("click", function () {
@@ -697,28 +819,144 @@
     });
   });
 
-  $("[data-buscar-precios]").addEventListener("input", vistaPrecios);
-
-  // Ajuste de precio en lote: sube o baja un % todos los precios que están
-  // visibles (respeta el filtro de búsqueda). No guarda solo — sólo llena
-  // los inputs y dispara el mismo marcado de "cambiado" que ya existe, así
-  // el dueño revisa antes de tocar «Guardar cambios».
-  $("[data-lote-aplicar]").addEventListener("click", function () {
-    var pct = Number($("[data-lote-pct]").value);
-    if (!pct) { toast("Poné un porcentaje distinto de 0.", true); return; }
-    var inputs = $$("[data-lista-precios] [data-precio-id]");
-    if (!inputs.length) {
-      toast("No hay precios visibles para ajustar. Probá sacar el filtro de búsqueda.", true);
+  /* Descartar en dos toques, sin cartel del navegador: hay navegadores (el
+     de algunas apps, por ejemplo) que bloquean los confirm() y contestan
+     «no» solos, y el botón parecía no andar. Primer toque: «Sí, descartar».
+     Segundo toque (dentro de 4 s): descarta. Si no, vuelve a la normalidad. */
+  var descartarTimer = null;
+  function volverDescartar() {
+    clearTimeout(descartarTimer);
+    var b = $("[data-descartar-precios]");
+    b.classList.remove("is-confirmar");
+    b.textContent = "Descartar";
+  }
+  $("[data-descartar-precios]").addEventListener("click", function () {
+    var b = this;
+    if (!Object.keys(sucios).length) return;
+    if (!b.classList.contains("is-confirmar")) {
+      b.classList.add("is-confirmar");
+      b.textContent = "Sí, descartar";
+      clearTimeout(descartarTimer);
+      descartarTimer = setTimeout(volverDescartar, 4000);
       return;
     }
-    inputs.forEach(function (inp) {
-      var actual = Number(inp.value) || 0;
-      var nuevo = Math.round((actual * (1 + pct / 100)) / 100) * 100;
-      inp.value = nuevo;
-      inp.dispatchEvent(new Event("input", { bubbles: true }));
+    volverDescartar();
+    sucios = {};
+    vistaPrecios();
+    toast("Cambios descartados");
+  });
+
+  // Si cierra o recarga la página con cambios sin guardar, el navegador avisa.
+  window.addEventListener("beforeunload", function (e) {
+    if (!Object.keys(sucios).length) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
+  $("[data-precios-cat]").addEventListener("change", vistaPrecios);
+
+  /* ---------------------------------------------- subir / bajar en lote -- */
+  // Acepta "10", "7,5" o "7.5". Devuelve 0 si no es un número positivo.
+  function leerPct() {
+    var t = String($("[data-lote-pct]").value || "").trim().replace(",", ".");
+    var n = Number(t);
+    return t && !isNaN(n) && n > 0 ? n : 0;
+  }
+
+  // Siempre sobre el precio GUARDADO: aplicar 10% y después 5% deja +5%, no
+  // +15,5%. Así un segundo intento corrige al primero en vez de sumarse.
+  function precioAjustado(precio, pct, redondear) {
+    var x = Number(precio) * (1 + loteDir * pct / 100);
+    return redondear ? Math.round(x / 100) * 100 : Math.round(x * 100) / 100;
+  }
+
+  // La frase de abajo de la barra: dice en criollo qué va a pasar, con un
+  // ejemplo real, antes de tocar «Aplicar».
+  function actualizarResumenLote() {
+    var box = $("[data-lote-resumen]");
+    var btn = $("[data-lote-aplicar]");
+    var pct = leerPct();
+    var items = [];
+    productosPrecios().forEach(function (p) {
+      (p.variantes || []).forEach(function (v) { items.push({ v: v, p: p }); });
     });
-    toast(inputs.length + " precio" + (inputs.length === 1 ? "" : "s") +
-      " ajustado" + (inputs.length === 1 ? "" : "s") + " — revisalos y tocá «Guardar cambios» para confirmar.");
+    var sel = $("[data-precios-cat]");
+    var donde = sel.value
+      ? "de <b>" + esc(sel.options[sel.selectedIndex].text) + "</b>"
+      : "de <b>todas las categorías</b>";
+
+    btn.disabled = true;
+    if (!items.length) {
+      box.innerHTML = "No hay precios para ajustar en esta categoría.";
+      return;
+    }
+    if (!pct) {
+      box.innerHTML = "Escribí cuánto querés " + (loteDir > 0 ? "subir" : "bajar") +
+        " y acá vas a ver cómo quedan los precios antes de aplicar.";
+      return;
+    }
+    if (loteDir < 0 && pct >= 100) {
+      box.innerHTML = '<span class="err">No se puede bajar 100% o más: los precios quedarían en cero.</span>';
+      return;
+    }
+    var ej = items[0];
+    var redondear = $("[data-lote-redondear]").checked;
+    box.innerHTML = "Vas a <b>" + (loteDir > 0 ? "subir" : "bajar") + " " + fmtPct(pct) + "%</b> " +
+      (items.length === 1 ? "el único precio " : "los <b>" + items.length + " precios</b> ") + donde + ". " +
+      '<span class="ajuste-ej">Ej.: ' + esc(ej.p.nombre) + " " + esc(ej.v.medida) + ": " +
+      esc(money(ej.v.precio)) + " → <b>" + esc(money(precioAjustado(ej.v.precio, pct, redondear))) + "</b></span>";
+    btn.disabled = false;
+  }
+
+  // Destello rápido en cada precio que cambió, en cascada de arriba hacia
+  // abajo: se ve de un vistazo a cuáles se aplicó.
+  function destello(inp, i) {
+    inp.classList.remove("is-flash");
+    void inp.offsetWidth;   // reinicia la animación si ya estaba
+    inp.style.animationDelay = Math.min(i * 0.025, 0.6) + "s";
+    inp.classList.add("is-flash");
+  }
+  document.addEventListener("animationend", function (e) {
+    if (e.target.classList && e.target.classList.contains("is-flash")) {
+      e.target.classList.remove("is-flash");
+      e.target.style.animationDelay = "";
+    }
+  });
+
+  $$("[data-lote-dir]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      loteDir = Number(b.getAttribute("data-lote-dir"));
+      $$("[data-lote-dir]").forEach(function (x) {
+        x.classList.toggle("is-on", x === b);
+        x.setAttribute("aria-pressed", x === b ? "true" : "false");
+      });
+      actualizarResumenLote();
+    });
+  });
+  $("[data-lote-pct]").addEventListener("input", actualizarResumenLote);
+  $("[data-lote-pct]").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !$("[data-lote-aplicar]").disabled) $("[data-lote-aplicar]").click();
+  });
+  $("[data-lote-redondear]").addEventListener("change", actualizarResumenLote);
+
+  $("[data-lote-aplicar]").addEventListener("click", function () {
+    var pct = leerPct();
+    if (!pct || (loteDir < 0 && pct >= 100)) return;
+    var redondear = $("[data-lote-redondear]").checked;
+    var cambiados = 0, iguales = 0;
+    $$("[data-lista-precios] [data-precio-id]").forEach(function (inp) {
+      var h = variantePorId(Number(inp.getAttribute("data-precio-id")));
+      if (!h) return;
+      var nuevo = precioAjustado(h.v.precio, pct, redondear);
+      inp.value = nuevo;
+      marcarPrecio(inp);
+      if (nuevo !== Number(h.v.precio)) destello(inp, cambiados++);
+      else iguales++;
+    });
+    actualizarBarraPrecios();
+    toast("Listo: " + cambiados + (cambiados === 1 ? " precio ajustado" : " precios ajustados") +
+      (iguales ? " (" + iguales + " quedaron igual por el redondeo)" : "") +
+      ". Revisalos y tocá «Guardar cambios».");
   });
 
   /* ============================================================ PRODUCTOS = */
@@ -1470,6 +1708,8 @@
     if (!b) return;
     vistaActual = b.getAttribute("data-tab");
     $$("[data-tab]").forEach(function (t) { t.classList.toggle("is-on", t === b); });
+    // En el celular las solapas se deslizan: la elegida queda a la vista
+    b.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
     $$("[data-vista]").forEach(function (v) {
       v.hidden = v.getAttribute("data-vista") !== vistaActual;
     });

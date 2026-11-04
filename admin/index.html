@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
 <!-- Rutas absolutas a propósito: si se entra a /admin (sin la barra final),
      las rutas relativas se resuelven contra la raíz y no cargan nada. -->
-<link rel="stylesheet" href="/admin/admin.css?v=20260814b">
+<link rel="stylesheet" href="/admin/admin.css?v=20261103c">
 </head>
 <body>
 
@@ -111,20 +111,55 @@
       <div class="vista-head">
         <div>
           <h2>Precios</h2>
-          <p class="hint">Cambiá los números y guardá. Se escriben sin puntos de
-            miles: <code>24400</code>.</p>
-        </div>
-        <div class="vista-acc">
-          <input type="search" class="buscar" placeholder="Buscar producto…" data-buscar-precios>
-          <button type="button" class="btn btn-primary" data-guardar-precios disabled>Guardar cambios</button>
+          <p class="hint">Tocá un precio para cambiarlo, o subí y bajá una categoría entera de una.
+            Nada se publica hasta que tocás «Guardar cambios».</p>
         </div>
       </div>
-      <div class="vista-acc">
-        <input type="number" step="1" placeholder="% ej: 10 ó -5" data-lote-pct style="max-width:120px">
-        <button type="button" class="btn btn-sm" data-lote-aplicar>Aplicar % a lo filtrado</button>
-        <span class="hint">Sube o baja todos los precios que se ven abajo (usá el buscador para elegir cuáles). No guarda solo — después tocá «Guardar cambios».</span>
+
+      <!-- Subir / bajar en lote: la categoría elegida es a la vez lo que se
+           ve abajo y a lo que se aplica el %. -->
+      <div class="ajuste" data-ajuste>
+        <div class="ajuste-fila">
+          <label class="ajuste-campo ajuste-cat">
+            <span class="ajuste-label">Categoría</span>
+            <select data-precios-cat></select>
+          </label>
+          <div class="ajuste-campo">
+            <span class="ajuste-label" id="ajuste-dir">Ajuste</span>
+            <div class="seg" role="group" aria-labelledby="ajuste-dir">
+              <button type="button" class="seg-btn is-on" data-lote-dir="1" aria-pressed="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Subir</button>
+              <button type="button" class="seg-btn" data-lote-dir="-1" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>Bajar</button>
+            </div>
+          </div>
+          <label class="ajuste-campo">
+            <span class="ajuste-label">Porcentaje</span>
+            <span class="pct">
+              <input type="text" inputmode="decimal" autocomplete="off" placeholder="ej. 10" data-lote-pct>
+              <span aria-hidden="true">%</span>
+            </span>
+          </label>
+          <button type="button" class="btn btn-primary ajuste-btn" data-lote-aplicar disabled>Aplicar</button>
+        </div>
+        <div class="ajuste-pie">
+          <p class="ajuste-resumen" data-lote-resumen aria-live="polite"></p>
+          <label class="check"><input type="checkbox" data-lote-redondear checked> Redondear a $100</label>
+        </div>
       </div>
+
       <div data-lista-precios></div>
+
+      <!-- Aparece sola cuando hay precios cambiados sin guardar -->
+      <div class="guardar-barra" data-guardar-barra aria-hidden="true">
+        <div class="guardar-barra-in">
+          <span class="guardar-resumen" data-guardar-resumen></span>
+          <div class="guardar-acc">
+            <button type="button" class="btn btn-ghost" data-descartar-precios>Descartar</button>
+            <button type="button" class="btn btn-primary" data-guardar-precios disabled>Guardar cambios</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ---------------------------------------------------- CATEGORÍAS -->
@@ -196,6 +231,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/lib/supabase-config.js?v=20260814b"></script>
 <script src="/lib/manifest.js?v=20260814b"></script>
-<script src="/admin/admin.js?v=20260814b"></script>
+<script src="/admin/admin.js?v=20261103c"></script>
 </body>
 </html>

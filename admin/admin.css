@@ -248,8 +248,11 @@ label > input, label > textarea, label > select { margin-top: .4rem; }
   padding: .22rem .38rem;
 }
 
-.tabs { display: flex; gap: .2rem; flex: 1; flex-wrap: wrap; }
+/* Siempre en una sola línea: nunca se apilan. */
+.tabs { display: flex; gap: .2rem; flex: 1 1 auto; min-width: 0; }
 .tab {
+  flex: none;
+  white-space: nowrap;
   font: 600 13px/1 var(--sans);
   color: var(--txt-3);
   background: transparent;
@@ -326,7 +329,9 @@ label > input, label > textarea, label > select { margin-top: .4rem; }
 
 .pfila {
   display: grid;
-  grid-template-columns: 1fr 1fr 170px;
+  /* Ancho fijo para el precio: si no, la columna del medio se corre en
+     cada fila según lo largo que sea el precio de antes. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 300px;
   gap: .75rem;
   align-items: center;
   padding: .55rem .9rem;
@@ -340,6 +345,217 @@ label > input, label > textarea, label > select { margin-top: .4rem; }
   border-color: var(--acc);
   background: var(--acc-soft);
   color: var(--txt);
+}
+
+/* Precio: lo que valía antes (tachado, con el %) + el campo con su $ */
+.pfila-precio {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .65rem;
+}
+.pfila-antes {
+  font-size: 12px;
+  color: var(--txt-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pfila-antes b { font-weight: 700; margin-left: .2rem; }
+.pfila-antes .sube { color: var(--ok); }
+.pfila-antes .baja { color: var(--warn); }
+.pfila-input { position: relative; display: block; width: 150px; flex: none; }
+.pfila-input > span {
+  position: absolute;
+  left: .8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--txt-3);
+  font-size: 14px;
+  pointer-events: none;
+}
+/* margin-top 0: la regla general «label > input» lo bajaba 6px y el $
+   quedaba desfasado del número */
+.pfila-input input { display: block; margin-top: 0; padding-left: 1.55rem; }
+
+/* Destello en cascada sobre cada precio que tocó el ajuste en lote */
+@keyframes destello {
+  0%   { background: rgba(167, 139, 250, .5); border-color: var(--acc-lift); }
+  100% { background: var(--acc-soft);         border-color: var(--acc); }
+}
+.pfila input.is-flash { animation: destello .65s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* Título de categoría cuando se ven todas juntas */
+.pcat {
+  display: flex;
+  align-items: baseline;
+  gap: .55rem;
+  font: 700 12px/1.2 var(--sans);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--txt-2);
+  margin: 1.6rem 0 .6rem;
+}
+.pcat:first-child { margin-top: 0; }
+.pcat span {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--txt-3);
+}
+
+/* ---------------------------------------------------- ajuste en lote -- */
+.ajuste {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.6rem;
+}
+.ajuste-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .75rem;
+}
+.ajuste-campo { display: grid; gap: .38rem; }
+/* La regla general «label > select» le agrega margen arriba: acá no va.
+   Y los cuatro controles de la barra miden exactamente lo mismo. */
+.ajuste-campo > select { margin-top: 0; }
+.ajuste select,
+.ajuste .pct input,
+.seg,
+.ajuste-btn { height: 2.75rem; }
+.ajuste-cat { flex: 1 1 240px; max-width: 340px; }
+.ajuste-label {
+  font: 600 11px/1 var(--sans);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--txt-3);
+}
+
+/* Subir / Bajar: dos opciones pegadas, una siempre elegida */
+.seg {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+}
+.seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .38rem;
+  font: 600 13px/1 var(--sans);
+  color: var(--txt-2);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 .95rem;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.seg-btn svg {
+  width: 15px; height: 15px;
+  fill: none; stroke: currentColor;
+  stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+.seg-btn:hover { color: var(--txt); background: rgba(255, 255, 255, .05); }
+.seg-btn.is-on,
+.seg-btn.is-on:hover { color: var(--acc-ink); background: var(--acc); }
+
+.pct { position: relative; display: block; width: 112px; }
+.pct input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-right: 1.9rem;
+}
+.pct > span {
+  position: absolute;
+  right: .85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--txt-3);
+  pointer-events: none;
+}
+.ajuste-btn { padding-inline: 1.4rem; }
+
+.ajuste-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem 1.2rem;
+  margin-top: .95rem;
+  padding-top: .9rem;
+  border-top: 1px solid var(--line);
+}
+.ajuste-resumen { flex: 1 1 320px; font-size: 13px; color: var(--txt-2); }
+.ajuste-resumen b { color: var(--txt); font-weight: 600; }
+.ajuste-resumen .err { color: var(--err); }
+.ajuste-ej { display: inline-block; color: var(--txt-3); margin-left: .15rem; }
+.ajuste-pie .check { font-size: 13px; padding: 0; white-space: nowrap; }
+
+/* ---------------------------------------- barra de guardar (sticky) -- */
+/* Pegada abajo de la pantalla mientras se recorre la lista. Escondida (y
+   fuera del orden de tabulación) hasta que haya algo para guardar. */
+.guardar-barra {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin-top: 1.1rem;
+  padding-bottom: max(.9rem, env(safe-area-inset-bottom));
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(calc(100% + 1rem));
+  transition: transform .34s cubic-bezier(.2, .8, .2, 1), opacity .2s ease, visibility 0s linear .34s;
+}
+.guardar-barra.is-on {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: transform .34s cubic-bezier(.2, .8, .2, 1), opacity .2s ease, visibility 0s;
+}
+.guardar-barra-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem 1rem;
+  background: var(--bg-4);
+  border: 1px solid rgba(167, 139, 250, .45);
+  border-radius: var(--r);
+  padding: .7rem .75rem .7rem 1.1rem;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .7);
+}
+.guardar-resumen { font-size: 14px; color: var(--txt-2); }
+.guardar-resumen b { color: var(--txt); font-weight: 700; }
+.guardar-ocultos { color: var(--txt-3); font-size: 13px; }
+.guardar-acc { display: flex; gap: .5rem; }
+/* Segundo toque de «Descartar»: se pone en color de aviso */
+.guardar-acc .btn.is-confirmar {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+/* Puntito en la solapa: hay precios cambiados sin guardar */
+.tab.tiene-cambios::after {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px;
+  margin-left: .45rem;
+  border-radius: 50%;
+  background: var(--warn);
+  vertical-align: middle;
+}
+
+/* Con la barra a la vista, los avisos suben para no taparla */
+body.hay-cambios .toast { bottom: 6rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pfila input.is-flash { animation: none; }
+  .guardar-barra, .guardar-barra.is-on { transition: none; }
 }
 
 /* ------------------------------------------------------------ tarjetas -- */
@@ -600,14 +816,66 @@ legend .hint { font-size: 11px; letter-spacing: .13em; text-transform: none; }
 .toast.is-err { border-color: var(--err); color: var(--err); }
 
 /* ---------------------------------------------------------- responsive -- */
+/* Hasta 900px no entran logo, solapas y botones en una línea: las solapas
+   bajan a su propia fila, a todo el ancho. Si en el celular no entran todas,
+   se deslizan de costado; la última queda cortada a la vista, que es la
+   pista de que hay más. */
+@media (max-width: 900px) {
+  .top-in { --pad: clamp(1rem, 3vw, 2rem); gap: .6rem; padding-bottom: 0; }
+  .marca { margin-right: auto; }
+  .tabs {
+    order: 3;
+    flex: 0 0 calc(100% + 2 * var(--pad));
+    margin-inline: calc(-1 * var(--pad));
+    padding: 0 var(--pad) .6rem;
+    scroll-padding-inline: var(--pad);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+}
+
 @media (max-width: 720px) {
   /* En vez de esconder el detalle (ej. "Toallón"), lo apilamos debajo del
      nombre de la medida: sigue estando ahí, sólo que no compite por ancho
      con el precio. */
-  .pfila { grid-template-columns: 1fr 130px; }
+  .pfila { grid-template-columns: minmax(0, 1fr) auto; }
   .pfila-med { grid-column: 1; }
   .pfila-det { display: block; grid-column: 1; font-size: 11px; margin-top: .15rem; }
-  .pfila input { grid-column: 2; grid-row: 1 / 3; }
+  /* El precio de antes va arriba del campo, no al costado: no hay ancho */
+  .pfila-precio {
+    grid-column: 2; grid-row: 1 / 3;
+    flex-direction: column; align-items: flex-end; gap: .25rem;
+  }
+  .pfila-input { width: 132px; }
+
+  /* Barra de ajuste en dos columnas: categoría arriba, Subir/Bajar y % al
+     medio, después la frase que explica qué va a pasar, y recién al final
+     «Aplicar» a todo el ancho: primero se lee, después se toca. */
+  .ajuste {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+    padding: .9rem;
+  }
+  .ajuste-fila, .ajuste-pie { display: contents; }
+  .ajuste-cat { grid-column: 1 / -1; max-width: none; }
+  .seg { display: flex; }
+  .seg-btn { flex: 1; }
+  .pct { width: 100%; }
+  .ajuste-resumen {
+    grid-column: 1 / -1;
+    order: 1;
+    padding-top: .8rem;
+    border-top: 1px solid var(--line);
+  }
+  .ajuste-ej { display: block; margin: .2rem 0 0; }
+  .ajuste-pie .check { grid-column: 1 / -1; order: 2; }
+  .ajuste-btn { grid-column: 1 / -1; order: 3; }
+  .guardar-acc { width: 100%; }
+  .guardar-acc .btn { flex: 1; }
+  /* La barra en celular es más alta (botones abajo): el aviso sube más */
+  body.hay-cambios .toast { bottom: 8.5rem; }
   .campos { grid-template-columns: 1fr; }
   .rep-fila { grid-template-columns: 1fr 1fr 38px; }
   .rep-set-linea { grid-template-columns: 1fr 1fr 38px; }
@@ -626,13 +894,13 @@ legend .hint { font-size: 11px; letter-spacing: .13em; text-transform: none; }
   }
   .tarjeta { flex-wrap: wrap; }
   .tarjeta-acc { width: 100%; justify-content: flex-end; }
-  .top-in { gap: .6rem; }
-  .tabs { order: 3; width: 100%; }
   .editor { max-height: 96dvh; }
   .editor form { max-height: 96dvh; }
 
   /* Objetivos táctiles más grandes: el dedo necesita más margen que el
      cursor del mouse para no tocar el botón de al lado por error. */
   .tab { padding: .82rem .85rem; }
+  /* Que «Ver la web» y «Salir» entren al lado del logo hasta en 360px */
+  .top-acc .btn { padding-inline: .75rem; }
   .btn-sm { padding: .72rem .72rem; }
 }
