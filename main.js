@@ -646,19 +646,125 @@
     contador.textContent = (idx + 1) + " / " + fotos.length;
   }
 
-  // Cambia sólo la foto de arriba (sin redibujar toda la ficha), con un fundido.
+  /* ================================================== FOTOS DE LA FICHA ==
+     Cómo llegan las fotos grandes sin mostrar nunca una equivocada:
+     - bajarFoto() baja cada foto una sola vez y avisa cuando está lista.
+     - Mientras baja la grande, si ya hay en pantalla una versión chica de la
+       MISMA foto (la de la tarjeta del catálogo o la miniatura del
+       estampado), se muestra esa; si no, el marco con un brillo de carga.
+     - Si el cliente toca otra cosa antes de que llegue, la que llega tarde
+       se descarta (fotoTurno). Antes, con internet lenta, podía pisar la
+       elección nueva.
+     - Las demás fotos del producto se precargan de a dos y recién después
+       de la principal; al cerrar la ficha o abrir otra, la fila se corta.
+       Antes se pedían todas juntas (16 en las sábanas Microfibra) y la foto
+       del producto siguiente quedaba esperando detrás. */
+  var VACIA = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  var fotosPedidas = {};
+  var fotoTurno = 0;
+  var cola = [], enCurso = [];
+  var A_LA_VEZ = 2;   // de a dos: completa rápido sin trabar lo que se mira
+
+  function bajarFoto(url, cb) {
+    var f = fotosPedidas[url];
+    if (!f) {
+      f = fotosPedidas[url] = { img: new Image(), lista: false, cbs: [] };
+      var fin = function () {
+        f.lista = true;
+        var cbs = f.cbs; f.cbs = [];
+        cbs.forEach(function (c) { c(); });
+      };
+      f.img.onload = function () {
+        // decode(): que ya esté lista para pintarse y no parpadee al ponerla
+        if (f.img.decode) f.img.decode().then(fin, fin); else fin();
+      };
+      f.img.onerror = fin;
+      f.img.src = url;
+    }
+    if (cb) { if (f.lista) cb(); else f.cbs.push(cb); }
+    return f;
+  }
+
+  function fotoLista(url) {
+    var f = bajarFoto(url);
+    return f.lista || (f.img.complete && f.img.naturalWidth > 0);
+  }
+
+  // Una versión chica de la misma foto que ya esté bajada en pantalla.
+  function fotoChica(p, src) {
+    var cands = [];
+    if (src === p.img) cands = $$('[data-card="' + p.id + '"] .card-media img');
+    var est = (p.estampados || []).filter(function (e) { return e.img === src; })[0];
+    if (est) cands = cands.concat($$('[data-pick-est="' + est.slug + '"] img'));
+    for (var i = 0; i < cands.length; i++) {
+      var im = cands[i];
+      if (im.complete && im.naturalWidth > 0) {
+        return { url: im.currentSrc || im.src, borrosa: im.naturalWidth < 400 };
+      }
+    }
+    return null;
+  }
+
+  // Pone en la ficha la foto que corresponde a lo elegido.
   function updatePdImage() {
     var p = byId(pdState.pid); if (!p) return;
     var el = $("[data-pd-img]"); if (!el) return;
-    // foto(): misma optimización de Cloudinary que se usa al abrir la ficha.
-    // Sin esto, cambiar de color pedía la imagen cruda tal cual está guardada.
-    var full = foto(currentPdImage(p), 1200);
-    if (el.getAttribute("src") === full) return;
-    el.style.opacity = "0";
-    var pre = new Image();
-    pre.onload = pre.onerror = function () { el.src = full; el.style.opacity = "1"; };
-    pre.src = full;
+    var media = el.closest(".pd-media");
+    var src = currentPdImage(p);
+    var full = foto(src, 1200);
+    var turno = ++fotoTurno;
     syncGaleria();
+
+    var mostrar = function (url, borrosa) {
+      el.src = url;
+      el.classList.toggle("is-borroso", !!borrosa);
+      el.style.opacity = "1";
+      if (media) media.classList.remove("is-cargando");
+    };
+    if (fotoLista(full)) { mostrar(full, false); return; }
+    var chica = fotoChica(p, src);
+    if (chica) {
+      mostrar(chica.url, chica.borrosa);
+    } else {
+      el.style.opacity = "0";
+      if (media) media.classList.add("is-cargando");
+    }
+    bajarFoto(full, function () {
+      if (turno !== fotoTurno || !el.isConnected) return;   // ya se eligió otra
+      mostrar(full, false);
+    });
+  }
+
+  function encolarFotos(urls) {
+    cortarCola();
+    cola = urls.slice();
+    seguirCola();
+  }
+  function seguirCola() {
+    while (enCurso.length < A_LA_VEZ && cola.length) {
+      var url = cola.shift();
+      if (fotosPedidas[url]) continue;          // ya bajada o bajando
+      enCurso.push(url);
+      bajarFoto(url, terminoEnCola(url));
+    }
+  }
+  function terminoEnCola(url) {
+    return function () {
+      enCurso = enCurso.filter(function (u) { return u !== url; });
+      seguirCola();
+    };
+  }
+  function cortarCola() {
+    cola = [];
+    enCurso.forEach(function (url) {
+      var f = fotosPedidas[url];
+      if (f && !f.lista) {                      // la corto para liberar la conexión
+        f.img.onload = f.img.onerror = null;
+        f.img.src = "";
+        delete fotosPedidas[url];
+      }
+    });
+    enCurso = [];
   }
 
   function stockInfo(v) {
@@ -820,7 +926,7 @@
     return '<div class="pd" data-pd-id="' + esc(p.id) + '">' +
       '<button class="icon-btn pd-close" type="button" data-close-product aria-label="Cerrar">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-      '<div class="pd-media" data-pd-swipe><img src="' + esc(foto(img, 1200)) + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
+      '<div class="pd-media" data-pd-swipe><img src="' + VACIA + '" alt="' + esc(p.nombre) + '" data-pd-img>' +
         arrows + contador +
         '<div class="pd-overlay">' + colores + "</div></div>" +
       patterns +
@@ -870,25 +976,13 @@
   function renderProduct() {
     var p = byId(pdState.pid); if (!p) return;
     var panel = $("[data-product-panel]");
-
-    var pintar = function () {
-      panel.innerHTML = productHTML(p);
-      panel.scrollTop = 0;
-      watchPatternHint();
-    };
-
-    // Si la foto va a cambiar, esperamos a que termine de descargarse antes
-    // de redibujar: si no, se ve un hueco vacío (el fondo de la ficha) hasta
-    // que carga, sobre todo con internet lenta o en el celular.
-    var imgActual = $("[data-pd-img]", panel);
-    var full = foto(currentPdImage(p), 1200);
-    if (imgActual && imgActual.getAttribute("src") !== full) {
-      var pre = new Image();
-      pre.onload = pre.onerror = pintar;
-      pre.src = full;
-    } else {
-      pintar();
-    }
+    // Se dibuja al toque aunque la foto no haya llegado. Antes se esperaba a
+    // la foto y mientras tanto la ficha seguía mostrando el producto anterior
+    // (foto, nombre y precio) durante un segundo.
+    panel.innerHTML = productHTML(p);
+    panel.scrollTop = 0;
+    watchPatternHint();
+    updatePdImage();
   }
 
   // Deslizar el dedo sobre la foto pasa a la siguiente/anterior de la galería
@@ -921,6 +1015,7 @@
 
   function openProduct(pid) {
     var p = byId(pid); if (!p) return;
+    cortarCola();
     var primera = (p.variantes || []).filter(function (v) { return v.stock !== "agotado"; })[0] || p.variantes[0];
     pdState = {
       pid: pid,
@@ -935,19 +1030,28 @@
     precargarFotos(p);
   }
 
-  // Apenas se abre la ficha, bajamos en silencio las demás fotos del
-  // producto (colores, estampados) mientras el cliente mira la principal.
-  // Así, para cuando toca un color, ya está en caché y cambia al toque.
+  // Las demás fotos del producto (estampados, colores, galería) se bajan en
+  // silencio para que al tocarlas cambien al toque, pero de a una y recién
+  // cuando ya llegó la principal: primero lo que el cliente está mirando.
   function precargarFotos(p) {
     var urls = [];
-    Object.keys(p.fotosColor || {}).forEach(function (c) { urls.push(p.fotosColor[c]); });
-    (p.estampados || []).forEach(function (e) { urls.push(e.img); });
-    (p.fotos || []).forEach(function (f) { urls.push(f.img); });
-    urls.forEach(function (u) {
-      var img = new Image();
-      img.src = foto(u, 1200);
+    (p.estampados || []).forEach(function (e) { urls.push(foto(e.img, 1200)); });
+    Object.keys(p.fotosColor || {}).forEach(function (c) { urls.push(foto(p.fotosColor[c], 1200)); });
+    (p.fotos || []).forEach(function (f) { urls.push(foto(typeof f === "string" ? f : f && f.img, 1200)); });
+    var principal = foto(currentPdImage(p), 1200);
+    var pid = p.id;
+    bajarFoto(principal, function () {
+      var dlg = $("[data-product-dialog]");
+      if (pdState.pid !== pid || !dlg || !dlg.open) return;
+      encolarFotos(urls.filter(function (u) { return u && u !== principal; }));
     });
   }
+
+  // Al cerrar la ficha se corta la precarga que quedaba pendiente.
+  (function () {
+    var dlg = $("[data-product-dialog]");
+    if (dlg) dlg.addEventListener("close", cortarCola);
+  })();
 
   /* ======================================================  BOTÓN ATRÁS  ==
      Para que la flecha de atrás del celular cierre lo que esté abierto
